@@ -17,11 +17,13 @@ ROUTE is the expertise: curate registers itself as jj's `ui.diff-editor`, so `sp
 
 ## Screenshots
 
-The status home, the diff-editor (split mode), and the op-log time machine — all captured automatically from the real plugin via [VHS](https://github.com/charmbracelet/vhs):
+The status home, the diff-editor (split mode), the op-log time machine, the 3-way merge-editor, and the revset workbench — all captured automatically from the real plugin via [VHS](https://github.com/charmbracelet/vhs):
 
 ![status home](../screenshots/status-home.png)
 ![diff-editor](../screenshots/diffeditor-open.png)
 ![op-log](../screenshots/oplog.png)
+![merge-editor](../screenshots/mergeeditor-open.png)
+![revset workbench](../screenshots/revset-open.png)
 
 ## Requirements
 
@@ -62,9 +64,12 @@ Lower-case = safe · **UPPER-case = rewrites history**. `.` repeats the last rew
 | `S` | **squash interactively (hunks)** | `jj squash -i` |
 | `x` | **split interactively (hunks)** | `jj split -i` |
 | `=` | **restore hunk/file from parent** | `jj restore` |
-| `m` `r` | mark · rebase onto cursor | `jj rebase -s -d` |
-| `b` | bookmark menu | `jj bookmark …` |
-| `gf` `gp` | fetch · push | `jj git fetch/push` |
+| `m` `r` | mark · **rebase transient** (onto / -r / -b / insert ±) | `jj rebase` |
+| `R` | **resolve conflicts (3-way merge-editor)** | `jj resolve` |
+| `b` | bookmark menu (set/tug/delete/forget/track/list) | `jj bookmark …` |
+| `f` | sync menu (fetch / fetch-all / push / push-change) | `jj git fetch/push` |
+| `e` | revset workbench (live query) | `jj log -r …` |
+| `Z` | power menu (duplicate/parallelize/fix/annotate/workspace) | `jj duplicate …` |
 | `o` | op-log | `jj op log` |
 | `u` | undo | `jj undo` |
 | `L` | evolog of change | `jj evolog` |
@@ -74,11 +79,23 @@ Lower-case = safe · **UPPER-case = rewrites history**. `.` repeats the last rew
 
 `<space>` toggle hunk · `a` toggle file · `A` toggle all · `[c` `]c` nav · `<CR>` confirm (write & exit 0) · `q` abort (jj cancels).
 
+### Merge-editor buffer (3-way)
+
+`l` take left · `r` take right · `L` left+right · `R` right+left · `b` base · `[c` `]c` nav conflicts · `<CR>` apply (write `$output`, exit 0) · `q` abort. Applies only when every conflict has a choice.
+
 ### Op-log buffer
 
 `<CR>` restore to op (append-only) · `=` diff this op · `g-` `g+` undo/redo walk · `L` evolog · `u` undo.
 
-## The wedge: how curate becomes jj's diff-editor
+### Revset workbench
+
+Line 1 is an editable revset; the matching log recomputes live below as you type. `<CR>` on a result jumps to it (`jj edit`) · `q` close.
+
+### Annotate / blame
+
+A narrow gutter (change-id + age per line) scroll-bound to the source. `<CR>` jumps to the change that wrote the line · `q` close.
+
+## The wedge: how curate becomes jj's diff- *and* merge-editor
 
 When you press `x` (split) or `S` (squash-i), curate launches jj with itself registered as the diff-editor:
 
@@ -96,17 +113,21 @@ jj split -i -r <change>
 
 No temp git repo, no `intent-to-add` dance. See `lua/curate/diffeditor/` and `bin/curate-diff-shim`.
 
+`R` (resolve) reuses the **same handshake** as jj's `ui.merge-editor`: jj passes four files (`$base`/`$left`/`$right` read-only + an empty `$output`), the shim hands them to the running nvim, and the 3-way buffer writes the resolution into `$output`. One RPC mechanism, two editors.
+
 ## Architecture
 
 Three layers plus the plugin shell (mirrors the design's module tree):
 
 ```
 lua/curate/
-  jj/        data layer — runner (vim.system argv), template parser, model, diff
-  ui/        mechanism  — View base, render (extmarks), tree, decor provider, transient
-  views/     surfaces   — status, log, describe, diffeditor, oplog, evolog, file, process
-  actions/   the verbs  — route (absorb/squash/split), name, trust, reshape, sync
-  diffeditor/ rpc + shim — the wedge
+  jj/         data layer — runner (vim.system argv), template parser, model, diff, revset
+  ui/         mechanism  — View base, render (extmarks), tree, decor provider, transient
+  views/      surfaces   — status, log, describe, diffeditor, mergeeditor, oplog, evolog,
+                           revset, annotate, file, process
+  actions/    the verbs  — route (absorb/squash/split/resolve), name, trust, reshape,
+                           sync, power
+  diffeditor/ engine     — hunks (2-way), merge3 (3-way), rpc + shim — the wedge
 ```
 
 Data never knows about windows; views never shell out directly; everything mutating funnels through `actions/`. See [`../project/curate.nvim Lua Architecture.dc.html`](../project/curate.nvim%20Lua%20Architecture.dc.html).

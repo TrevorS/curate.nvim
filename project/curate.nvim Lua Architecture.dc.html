@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; background: #16161e; }
+  ::selection { background: #283457; }
+  * { box-sizing: border-box; }
+  pre { tab-size: 2; }
+  .kw { color:#bb9af7; }     /* keyword */
+  .fn { color:#7aa2f7; }     /* function name */
+  .str { color:#9ece6a; }    /* string */
+  .cm { color:#565f89; font-style:italic; }  /* comment */
+  .ty { color:#7dcfff; }     /* type / annotation */
+  .nm { color:#e0af68; }     /* number / constant */
+  .pn { color:#73daca; }     /* punctuation accent / api */
+</style>
+</helmet>
+
+<div style="background:#16161e; color:#c0caf5; font-family:Inter,sans-serif; min-height:100vh; padding:0 0 120px">
+<div style="max-width:1040px; margin:0 auto; padding:0 28px">
+
+  <!-- ============ MASTHEAD ============ -->
+  <div style="padding:64px 0 30px; border-bottom:1px solid #2a2e42">
+    <div style="font:600 12px/1 'JetBrains Mono',monospace; letter-spacing:.18em; text-transform:uppercase; color:#565f89; margin-bottom:18px">implementation sketch · idiomatic nvim / lua · jun 2026 (nvim 0.11+)</div>
+    <div style="font:800 40px/1.05 'JetBrains Mono',monospace; color:#fff; letter-spacing:-.02em">curate<span style="color:#bb9af7">.nvim</span> <span style="color:#3a3f58">/</span> lua architecture</div>
+    <div style="margin-top:18px; font-size:18px; line-height:1.5; color:#a9b1d6; max-width:800px">How the board's <b style="color:#e6e3f0">views</b> map onto a Lua module tree, and the handful of real primitives that carry the weight: <span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">vim.system</span> argv, extmark namespaces, a decoration provider, LuaCATS-typed models, and an nvr-style remote-wait for the diff-editor.</div>
+    <div style="display:flex; gap:10px; margin-top:22px; flex-wrap:wrap; font:600 11px 'JetBrains Mono',monospace">
+      <span style="background:#1a1f33; color:#73daca; padding:6px 12px; border-radius:30px">jj/ &middot; data</span>
+      <span style="color:#3a3f58; align-self:center">→</span>
+      <span style="background:#1a1f33; color:#7aa2f7; padding:6px 12px; border-radius:30px">ui/ &middot; mechanism</span>
+      <span style="color:#3a3f58; align-self:center">→</span>
+      <span style="background:#241b3a; color:#bb9af7; padding:6px 12px; border-radius:30px">views/ &middot; surfaces</span>
+      <span style="margin-left:auto; align-self:center; color:#3a3f58">one runner · one parser · one render path</span>
+    </div>
+  </div>
+
+  <!-- ============ §A MODULE TREE ============ -->
+  <div style="padding:46px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#7dcfff; margin-bottom:6px">§A · THE MODULE TREE</div>
+    <h2 style="margin:0 0 8px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em">Three layers, plus the plugin shell</h2>
+    <p style="margin:0 0 20px; font-size:15px; line-height:1.6; color:#9aa3b8; max-width:820px">Data never knows about windows; views never shell out directly. Everything mutating funnels through <span style="font-family:'JetBrains Mono',monospace">actions/</span> so undo, refresh, and the process log are uniform.</p>
+    <pre style="margin:0; background:#11121a; border:1px solid #2a2e42; border-radius:9px; padding:20px 22px; overflow-x:auto; font:13px/1.7 'JetBrains Mono',monospace; color:#a9b1d6">curate.nvim/
+<span class="cm">├─ plugin/curate.lua</span>            <span class="cm">guard · :Curate cmd · curate:// autocmds · &lt;Plug&gt; (runs once)</span>
+<span class="cm">├─ lua/curate/</span>
+│  ├─ init.lua                <span class="cm">setup(opts) — the only public entry</span>
+│  ├─ config.lua              <span class="cm">defaults + vim.validate</span>
+│  ├─ keymap.lua              <span class="cm">the registry → ftplugin maps · which-key · cheatsheet</span>
+│  ├─ health.lua              <span class="cm">:checkhealth curate (jj version · servername)</span>
+│  ├─ <span class="ty">jj/</span>                       <span class="cm">─── DATA LAYER (P0) · zero UI ───</span>
+│  │  ├─ runner.lua           <span class="cm">vim.system argv wrapper (async · sync · raw)</span>
+│  │  ├─ template.lua         <span class="cm">-T strings + record/field split → model</span>
+│  │  ├─ model.lua            <span class="cm">---@class Change · Op · Hunk (LuaCATS)</span>
+│  │  └─ revset.lua           <span class="cm">typed revset builders</span>
+│  ├─ <span class="ty">ui/</span>                       <span class="cm">─── MECHANISM · view-agnostic ───</span>
+│  │  ├─ view.lua             <span class="cm">base View: buf/win/ns lifecycle</span>
+│  │  ├─ render.lua           <span class="cm">line-builder → extmark highlights (one pass)</span>
+│  │  ├─ tree.lua             <span class="cm">foldable files→hunks node model</span>
+│  │  ├─ decor.lua            <span class="cm">decoration provider (live/transient hl)</span>
+│  │  └─ transient.lua        <span class="cm">the popup engine (args · sticky · dispatch)</span>
+│  ├─ <span class="ty">views/</span>                    <span class="cm">─── SURFACES · one file per board frame ───</span>
+│  │  ├─ status.lua  log.lua  diffeditor.lua  oplog.lua
+│  │  ├─ describe.lua  evolog.lua  revset.lua  process.lua
+│  ├─ <span class="ty">actions/</span>                  <span class="cm">─── the verbs · the only mutators ───</span>
+│  │  ├─ route.lua            <span class="cm">absorb · squash · split</span>
+│  │  ├─ name.lua             <span class="cm">describe · commit · new</span>
+│  │  ├─ trust.lua            <span class="cm">undo · op restore</span>
+│  │  ├─ reshape.lua          <span class="cm">rebase · resolve (P4)</span>
+│  │  └─ sync.lua             <span class="cm">bookmark · git push/fetch (P5)</span>
+│  └─ <span class="ty">diffeditor/</span>
+│     ├─ rpc.lua              <span class="cm">server side: enter()/confirm()/abort()</span>
+│     └─ shim                 <span class="cm">~25-line wait-client jj spawns (nvr-style)</span></pre>
+  </div>
+
+  <!-- ============ §B FRAME → MODULE MAP ============ -->
+  <div style="padding:48px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#7dcfff; margin-bottom:6px">§B · BOARD FRAME → MODULE</div>
+    <h2 style="margin:0 0 18px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em">Every surface on the board has a home</h2>
+    <div style="background:#1a1b26; border:1px solid #2a2e42; border-radius:9px; overflow:hidden; font:13px/1 'JetBrains Mono',monospace">
+      <div style="display:grid; grid-template-columns:1.3fr 1.4fr 1.3fr; padding:11px 18px; color:#565f89; font-size:11px; letter-spacing:.06em; border-bottom:1px solid #2a2e42">
+        <span>BOARD FRAME</span><span>VIEW MODULE</span><span>LEANS ON</span>
+      </div>
+      <div style="padding:4px 0">
+        <div style="display:grid; grid-template-columns:1.3fr 1.4fr 1.3fr; padding:8px 18px; align-items:center"><span style="color:#7aa2f7">1 · status home</span><span style="color:#c0caf5">views/status.lua</span><span style="color:#565f89">ui/tree · render</span></div>
+        <div style="display:grid; grid-template-columns:1.3fr 1.4fr 1.3fr; padding:8px 18px; align-items:center; background:#191b28"><span style="color:#bb9af7; font-weight:700">2 · diff-editor ★</span><span style="color:#c0caf5">views/diffeditor.lua</span><span style="color:#565f89">diffeditor/rpc + shim</span></div>
+        <div style="display:grid; grid-template-columns:1.3fr 1.4fr 1.3fr; padding:8px 18px; align-items:center"><span style="color:#f7768e">3 · op-log</span><span style="color:#c0caf5">views/oplog.lua</span><span style="color:#565f89">actions/trust</span></div>
+        <div style="display:grid; grid-template-columns:1.3fr 1.4fr 1.3fr; padding:8px 18px; align-items:center; background:#191b28"><span style="color:#d4972f">4 · log + rebase</span><span style="color:#c0caf5">views/log.lua · actions/reshape</span><span style="color:#565f89">ui/decor (live dest)</span></div>
+        <div style="display:grid; grid-template-columns:1.3fr 1.4fr 1.3fr; padding:8px 18px; align-items:center"><span style="color:#9ece6a">5 · transient menu</span><span style="color:#c0caf5">ui/transient.lua</span><span style="color:#565f89">keymap registry</span></div>
+        <div style="display:grid; grid-template-columns:1.3fr 1.4fr 1.3fr; padding:8px 18px; align-items:center; background:#191b28"><span style="color:#9d7bd8">6 · revset workbench</span><span style="color:#c0caf5">views/revset.lua</span><span style="color:#565f89">jj/revset · debounce</span></div>
+        <div style="display:grid; grid-template-columns:1.3fr 1.4fr 1.3fr; padding:8px 18px; align-items:center"><span style="color:#bb9af7">8 · absorb</span><span style="color:#c0caf5">actions/route.lua</span><span style="color:#565f89">status overlay preview</span></div>
+        <div style="display:grid; grid-template-columns:1.3fr 1.4fr 1.3fr; padding:8px 18px; align-items:center; background:#191b28"><span style="color:#6f9e3c">9 · bookmark / git</span><span style="color:#c0caf5">actions/sync.lua · views/process.lua</span><span style="color:#565f89">runner ($ buffer)</span></div>
+        <div style="display:grid; grid-template-columns:1.3fr 1.4fr 1.3fr; padding:8px 18px; align-items:center"><span style="color:#9ece6a">— · describe / commit</span><span style="color:#c0caf5">views/describe.lua · actions/name</span><span style="color:#565f89">scratch buf + :w hook</span></div>
+        <div style="display:grid; grid-template-columns:1.3fr 1.4fr 1.3fr; padding:8px 18px; align-items:center; background:#191b28"><span style="color:#2bb3a3">11 · cheatsheet</span><span style="color:#c0caf5">keymap.lua (generated)</span><span style="color:#565f89">single registry table</span></div>
+        <div style="display:grid; grid-template-columns:1.3fr 1.4fr 1.3fr; padding:8px 18px; align-items:center"><span style="color:#565f89">7 · ambient gutter</span><span style="color:#565f89">— OUT —</span><span style="color:#565f89">defer to vcsigns/vcmarkers</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ §C RUNNER ============ -->
+  <div style="padding:48px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#73daca; margin-bottom:6px">§C · jj/runner.lua — THE ONLY WAY OUT</div>
+    <h2 style="margin:0 0 8px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em">Argv arrays through <span style="font-family:'JetBrains Mono',monospace; font-size:21px">vim.system</span> — never a shell</h2>
+    <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#9aa3b8; max-width:820px">No string concatenation, no quoting bugs, no injection surface. Callbacks land back on the main loop via <span style="font-family:'JetBrains Mono',monospace">vim.schedule_wrap</span>.</p>
+    <pre style="margin:0 0 14px; background:#11121a; border:1px solid #2a2e42; border-radius:9px; padding:20px 22px; overflow-x:auto; font:13px/1.7 'JetBrains Mono',monospace; color:#c0caf5"><span class="cm">---@class curate.RunOpts</span>
+<span class="cm">---@field cwd?  string</span>
+<span class="cm">---@field raw?  boolean              keep bytes — templates use \x1f / \x1e</span>
+<span class="cm">---@field env?  table&lt;string,string&gt;</span>
+
+<span class="kw">local</span> M = {}
+<span class="kw">local</span> BASE = { <span class="str">"jj"</span>, <span class="str">"--no-pager"</span>, <span class="str">"--color=never"</span> }
+
+<span class="cm">--- Async jj. The whole plugin reaches the binary through here.</span>
+<span class="cm">---@param args     string[]                         e.g. { "log", "-r", "@" }</span>
+<span class="cm">---@param opts     curate.RunOpts</span>
+<span class="cm">---@param on_done  fun(r: { code:integer, stdout:string, stderr:string })</span>
+<span class="kw">function</span> <span class="fn">M.spawn</span>(args, opts, on_done)
+  opts = opts <span class="kw">or</span> {}
+  <span class="pn">vim.system</span>(
+    <span class="pn">vim.list_extend</span>(<span class="pn">vim.deepcopy</span>(BASE), args),
+    { text = <span class="kw">not</span> opts.raw, cwd = opts.cwd, env = opts.env },
+    <span class="pn">vim.schedule_wrap</span>(<span class="kw">function</span>(r)         <span class="cm">-- back on the main loop</span>
+      <span class="kw">if</span> r.code ~= <span class="nm">0</span> <span class="kw">then</span> <span class="pn">require</span>(<span class="str">"curate.views.process"</span>).log(args, r) <span class="kw">end</span>
+      on_done(r)
+    <span class="kw">end</span>)
+  )
+<span class="kw">end</span>
+
+<span class="cm">-- one-shot blocking variant for setup/health only — never on a keypress</span>
+<span class="kw">function</span> <span class="fn">M.sync</span>(args)
+  <span class="kw">return</span> <span class="pn">vim.system</span>(<span class="pn">vim.list_extend</span>(<span class="pn">vim.deepcopy</span>(BASE), args), { text = <span class="kw">true</span> }):<span class="fn">wait</span>()
+<span class="kw">end</span>
+
+<span class="kw">return</span> M</pre>
+  </div>
+
+  <!-- ============ §D PARSER + MODEL ============ -->
+  <div style="padding:48px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#73daca; margin-bottom:6px">§D · jj/template.lua + model.lua — DATA, NOT TEXT</div>
+    <h2 style="margin:0 0 8px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em">One template, control-byte separated, into typed tables</h2>
+    <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#9aa3b8; max-width:820px">LuaCATS <span style="font-family:'JetBrains Mono',monospace">---@class</span> gives the whole plugin editor completion on the model. The graph comes from <span style="font-family:'JetBrains Mono',monospace">parents</span>, computed by us — never scraped from glyphs.</p>
+    <pre style="margin:0 0 14px; background:#11121a; border:1px solid #2a2e42; border-radius:9px; padding:20px 22px; overflow-x:auto; font:13px/1.7 'JetBrains Mono',monospace; color:#c0caf5"><span class="kw">local</span> US, RS = <span class="str">"\31"</span>, <span class="str">"\30"</span>      <span class="cm">-- unit / record sep: bytes the data can't contain</span>
+
+<span class="cm">-- field order IS the contract between template and parser</span>
+M.LOG_T = <span class="pn">table.concat</span>({
+  <span class="str">"change_id"</span>, <span class="str">"commit_id.short(8)"</span>, <span class="str">"author.email()"</span>,
+  <span class="str">"committer.timestamp().ago()"</span>, <span class="str">"description.first_line()"</span>,
+  <span class="str">'parents.map(|c| c.change_id()).join(" ")'</span>,
+  <span class="str">'if(conflict,"C","") ++ if(divergent,"D","") ++ if(immutable,"I","")'</span>,
+}, <span class="str">' ++ "\\u{1f}" ++ '</span>) .. <span class="str">' ++ "\\u{1e}"'</span>
+
+<span class="cm">---@class curate.Change</span>
+<span class="cm">---@field id       string      change_id — the anchor for every mark/buffer/op</span>
+<span class="cm">---@field commit   string</span>
+<span class="cm">---@field email    string</span>
+<span class="cm">---@field ago      string</span>
+<span class="cm">---@field subject  string</span>
+<span class="cm">---@field parents  string[]    DAG edges (we lay out the graph)</span>
+<span class="cm">---@field flags    { conflict:boolean, divergent:boolean, immutable:boolean }</span>
+
+<span class="cm">---@param stdout string</span>
+<span class="cm">---@return curate.Change[]</span>
+<span class="kw">function</span> <span class="fn">M.parse_log</span>(stdout)
+  <span class="kw">local</span> out = {}
+  <span class="kw">for</span> rec <span class="kw">in</span> <span class="pn">vim.gsplit</span>(stdout, RS, { plain = <span class="kw">true</span> }) <span class="kw">do</span>
+    <span class="kw">if</span> rec ~= <span class="str">""</span> <span class="kw">then</span>
+      <span class="kw">local</span> f = <span class="pn">vim.split</span>(rec, US, { plain = <span class="kw">true</span> })
+      out[#out + <span class="nm">1</span>] = {
+        id = f[<span class="nm">1</span>], commit = f[<span class="nm">2</span>], email = f[<span class="nm">3</span>], ago = f[<span class="nm">4</span>],
+        subject = f[<span class="nm">5</span>], parents = <span class="pn">vim.split</span>(f[<span class="nm">6</span>], <span class="str">" "</span>, { trimempty = <span class="kw">true</span> }),
+        flags = { conflict = f[<span class="nm">7</span>]:<span class="fn">find</span>(<span class="str">"C"</span>) ~= <span class="kw">nil</span>,
+                  divergent = f[<span class="nm">7</span>]:<span class="fn">find</span>(<span class="str">"D"</span>) ~= <span class="kw">nil</span>,
+                  immutable = f[<span class="nm">7</span>]:<span class="fn">find</span>(<span class="str">"I"</span>) ~= <span class="kw">nil</span> },
+      }
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+  <span class="kw">return</span> out
+<span class="kw">end</span></pre>
+  </div>
+
+  <!-- ============ §E VIEW BASE ============ -->
+  <div style="padding:48px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#7aa2f7; margin-bottom:6px">§E · ui/view.lua — THE SURFACE LIFECYCLE</div>
+    <h2 style="margin:0 0 8px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em">One base: scratch buffer, namespace, filetype, render hook</h2>
+    <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#9aa3b8; max-width:820px">Every view is a <span style="font-family:'JetBrains Mono',monospace">nofile</span> scratch buffer with a per-kind <span style="font-family:'JetBrains Mono',monospace">filetype</span> (drives ftplugin keymaps + treesitter) and its own extmark namespace. Subclasses implement only <span style="font-family:'JetBrains Mono',monospace">:render()</span>.</p>
+    <pre style="margin:0 0 14px; background:#11121a; border:1px solid #2a2e42; border-radius:9px; padding:20px 22px; overflow-x:auto; font:13px/1.7 'JetBrains Mono',monospace; color:#c0caf5"><span class="cm">---@class curate.View</span>
+<span class="cm">---@field kind string  @field buf integer  @field win integer  @field ns integer</span>
+<span class="kw">local</span> View = {}
+View.__index = View
+
+<span class="kw">function</span> <span class="fn">View.new</span>(kind)
+  <span class="kw">return</span> <span class="pn">setmetatable</span>({ kind = kind,
+    ns = <span class="pn">vim.api.nvim_create_namespace</span>(<span class="str">"curate."</span> .. kind) }, View)
+<span class="kw">end</span>
+
+<span class="kw">function</span> <span class="fn">View:open</span>(win_opts)
+  <span class="kw">self</span>.buf = <span class="pn">vim.api.nvim_create_buf</span>(<span class="kw">false</span>, <span class="kw">true</span>)
+  <span class="kw">local</span> b = <span class="pn">vim.bo</span>[<span class="kw">self</span>.buf]
+  b.buftype, b.bufhidden, b.swapfile = <span class="str">"nofile"</span>, <span class="str">"wipe"</span>, <span class="kw">false</span>
+  b.filetype = <span class="str">"curate-"</span> .. <span class="kw">self</span>.kind     <span class="cm">-- → ftplugin maps + TS highlight</span>
+  <span class="kw">self</span>.win = <span class="pn">vim.api.nvim_open_win</span>(<span class="kw">self</span>.buf, <span class="kw">true</span>, win_opts <span class="kw">or</span> { split = <span class="str">"right"</span> })
+  <span class="pn">vim.wo</span>[<span class="kw">self</span>.win].cursorline = <span class="kw">true</span>
+  <span class="kw">self</span>:<span class="fn">render</span>()
+  <span class="kw">return</span> <span class="kw">self</span>
+<span class="kw">end</span>
+
+<span class="cm">-- refresh after any action — jj is fast, so re-render the whole buffer.</span>
+<span class="cm">-- simplicity beats diff-patching; debounce coalesces rapid mutations.</span>
+<span class="kw">function</span> <span class="fn">View:refresh</span>()
+  <span class="kw">if</span> <span class="kw">self</span>._t <span class="kw">then</span> <span class="kw">self</span>._t:<span class="fn">stop</span>() <span class="kw">end</span>
+  <span class="kw">self</span>._t = <span class="pn">vim.defer_fn</span>(<span class="kw">function</span>() <span class="kw">if</span> <span class="kw">self</span>:<span class="fn">valid</span>() <span class="kw">then</span> <span class="kw">self</span>:<span class="fn">render</span>() <span class="kw">end</span> <span class="kw">end</span>, <span class="nm">80</span>)
+<span class="kw">end</span>
+
+<span class="kw">function</span> <span class="fn">View:valid</span>() <span class="kw">return</span> <span class="kw">self</span>.buf <span class="kw">and</span> <span class="pn">vim.api.nvim_buf_is_valid</span>(<span class="kw">self</span>.buf) <span class="kw">end</span>
+<span class="kw">function</span> <span class="fn">View:render</span>() <span class="pn">error</span>(<span class="str">"subclass must implement :render()"</span>) <span class="kw">end</span>
+
+<span class="kw">return</span> View</pre>
+  </div>
+
+  <!-- ============ §F RENDER + DECOR ============ -->
+  <div style="padding:48px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#7aa2f7; margin-bottom:6px">§F · ui/render.lua + decor.lua — HIGHLIGHTS THE MODERN WAY</div>
+    <h2 style="margin:0 0 8px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em">Extmarks for content, a decoration provider for live state</h2>
+    <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#9aa3b8; max-width:820px">Build <span style="font-family:'JetBrains Mono',monospace">{text, spans}</span> rows, flush in one pass. Transient highlight — the rebase destination tracking your cursor — never rewrites the buffer; it's painted per-redraw by a decoration provider with <span style="font-family:'JetBrains Mono',monospace">ephemeral</span> extmarks.</p>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px">
+      <pre style="margin:0; background:#11121a; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px; overflow-x:auto; font:12.5px/1.65 'JetBrains Mono',monospace; color:#c0caf5"><span class="cm">-- render.lua : content highlight</span>
+<span class="cm">---@class curate.Row</span>
+<span class="cm">---@field [1] string                  text</span>
+<span class="cm">---@field [2]? curate.Span[]           highlights</span>
+<span class="cm">---@alias curate.Span {[1]:string,[2]:integer,[3]:integer}</span>
+
+<span class="kw">function</span> <span class="fn">M.flush</span>(v, rows)
+  <span class="kw">local</span> text = <span class="pn">vim.tbl_map</span>(<span class="kw">function</span>(r) <span class="kw">return</span> r[<span class="nm">1</span>] <span class="kw">end</span>, rows)
+  <span class="pn">vim.bo</span>[v.buf].modifiable = <span class="kw">true</span>
+  <span class="pn">vim.api.nvim_buf_set_lines</span>(v.buf, <span class="nm">0</span>, -<span class="nm">1</span>, <span class="kw">false</span>, text)
+  <span class="pn">vim.api.nvim_buf_clear_namespace</span>(v.buf, v.ns, <span class="nm">0</span>, -<span class="nm">1</span>)
+  <span class="kw">for</span> i, r <span class="kw">in</span> <span class="pn">ipairs</span>(rows) <span class="kw">do</span>
+    <span class="kw">for</span> _, s <span class="kw">in</span> <span class="pn">ipairs</span>(r[<span class="nm">2</span>] <span class="kw">or</span> {}) <span class="kw">do</span>
+      <span class="pn">vim.api.nvim_buf_set_extmark</span>(v.buf, v.ns,
+        i - <span class="nm">1</span>, s[<span class="nm">2</span>],
+        { end_col = s[<span class="nm">3</span>], hl_group = s[<span class="nm">1</span>] })
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+  <span class="pn">vim.bo</span>[v.buf].modifiable = <span class="kw">false</span>
+<span class="kw">end</span></pre>
+      <pre style="margin:0; background:#11121a; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px; overflow-x:auto; font:12.5px/1.65 'JetBrains Mono',monospace; color:#c0caf5"><span class="cm">-- decor.lua : live rebase-dest highlight</span>
+<span class="cm">-- repaints on cursor move, no re-render</span>
+<span class="kw">local</span> ns = <span class="pn">vim.api.nvim_create_namespace</span>(<span class="str">"curate.decor"</span>)
+
+<span class="pn">vim.api.nvim_set_decoration_provider</span>(ns, {
+  on_line = <span class="kw">function</span>(_, _, buf, row)
+    <span class="kw">local</span> st = M.state[buf]
+    <span class="kw">if</span> <span class="kw">not</span> st <span class="kw">or</span> <span class="kw">not</span> st.dest <span class="kw">then</span> <span class="kw">return</span> <span class="kw">end</span>
+    <span class="kw">if</span> st.row2id[row] == st.dest <span class="kw">then</span>
+      <span class="pn">vim.api.nvim_buf_set_extmark</span>(buf, ns, row, <span class="nm">0</span>, {
+        line_hl_group = <span class="str">"CurateRebaseDest"</span>,
+        ephemeral = <span class="kw">true</span>,            <span class="cm">-- key: per-draw</span>
+      })
+    <span class="kw">end</span>
+  <span class="kw">end</span>,
+})
+
+<span class="cm">-- the mark step just sets state + redraws:</span>
+<span class="kw">function</span> <span class="fn">M.set_dest</span>(buf, id)
+  M.state[buf].dest = id
+  <span class="pn">vim.cmd.redraw</span>()
+<span class="kw">end</span></pre>
+    </div>
+  </div>
+
+  <!-- ============ §G DIFF-EDITOR HANDSHAKE ============ -->
+  <div style="padding:48px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#bb9af7; margin-bottom:6px">§G · diffeditor/ — THE WEDGE, IN LUA</div>
+    <h2 style="margin:0 0 8px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em">nvr-style remote-wait: jj blocks on a shim, the shim blocks on us</h2>
+    <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#9aa3b8; max-width:840px">The proven pattern for "external tool edits in my <i>running</i> nvim and waits" — exactly how <span style="font-family:'JetBrains Mono',monospace">nvr --remote-wait</span> backs <span style="font-family:'JetBrains Mono',monospace">$GIT_EDITOR</span>. curate spawns jj with its <span style="font-family:'JetBrains Mono',monospace">servername</span> in the env; jj spawns the shim; the shim opens the view in our instance and parks until we release it.</p>
+
+    <!-- sequence -->
+    <div style="background:#1a1b26; border:1px solid #2a2e42; border-radius:9px; padding:18px 22px; margin-bottom:16px; font:12.5px/1.9 'JetBrains Mono',monospace; color:#a9b1d6">
+      <div><span class="pn" style="color:#73daca">curate</span>  <span style="color:#565f89">spawn jj split -i  · env CURATE_SERVER=v:servername</span></div>
+      <div style="color:#565f89">  └─&gt; <span style="color:#bb9af7">jj</span>  materializes <span style="color:#7dcfff">$left</span> / <span style="color:#7dcfff">$right</span>, runs the configured editor, <b style="color:#e0af68">blocks</b></div>
+      <div style="color:#565f89">       └─&gt; <span style="color:#9ece6a">curate-shim $left $right</span>  <span style="color:#565f89">(tiny client)</span></div>
+      <div style="color:#565f89">            sockconnect(CURATE_SERVER) · rpcrequest <span style="color:#c0caf5">'curate:enter'</span> · <b style="color:#e0af68">blocks</b></div>
+      <div style="color:#565f89">                 └─&gt; <span class="pn" style="color:#73daca">running nvim</span>  opens DiffEditor view · user toggles hunks</div>
+      <div>                      user hits <span style="color:#9ece6a">&lt;CR&gt;</span> → write <span style="color:#7dcfff">$right</span> → <span style="color:#c0caf5">reply 0</span> → shim exits 0 → jj records</div>
+    </div>
+
+    <pre style="margin:0 0 14px; background:#11121a; border:1px solid #2a2e42; border-radius:9px; padding:20px 22px; overflow-x:auto; font:13px/1.7 'JetBrains Mono',monospace; color:#c0caf5"><span class="cm">-- actions/route.lua : launch</span>
+<span class="kw">function</span> <span class="fn">M.split_interactive</span>(change)
+  jj.<span class="fn">spawn</span>({ <span class="str">"split"</span>, <span class="str">"-i"</span>, <span class="str">"-r"</span>, change.id,
+    <span class="str">"--config"</span>, <span class="str">"ui.diff-editor=curate"</span>,
+    <span class="str">"--config"</span>, <span class="str">'merge-tools.curate.program=curate-shim'</span>,
+    <span class="str">"--config"</span>, <span class="str">'merge-tools.curate.edit-args=["$left","$right"]'</span>,
+  }, { env = { CURATE_SERVER = <span class="pn">vim.v.servername</span>, CURATE_MODE = <span class="str">"split"</span> } },
+  <span class="kw">function</span>() <span class="pn">require</span>(<span class="str">"curate.views.status"</span>).get():<span class="fn">refresh</span>() <span class="kw">end</span>)
+<span class="kw">end</span>
+
+<span class="cm">-- diffeditor/rpc.lua : server side. The shim's rpcrequest parks here;</span>
+<span class="cm">-- we stash its channel and reply LATER from confirm()/abort().</span>
+<span class="kw">function</span> <span class="fn">M.enter</span>(client_chan, left, right, mode)
+  <span class="kw">local</span> v = DiffEditor.<span class="fn">new</span>(left, right, mode)
+  v.client = client_chan                 <span class="cm">-- who to unblock</span>
+  v:<span class="fn">open</span>()
+  <span class="kw">return</span> <span class="pn">vim.NIL</span>                          <span class="cm">-- ack now; real result comes via rpcnotify</span>
+<span class="kw">end</span>
+
+<span class="kw">function</span> <span class="fn">DiffEditor:confirm</span>()
+  <span class="kw">self</span>:<span class="fn">write_back</span>()                        <span class="cm">-- revert de-selected hunks in $right</span>
+  <span class="pn">vim.rpcnotify</span>(<span class="kw">self</span>.client, <span class="str">"curate:done"</span>, <span class="nm">0</span>)  <span class="cm">-- → shim exits 0 → jj commits</span>
+  <span class="kw">self</span>:<span class="fn">close</span>()
+<span class="kw">end</span>
+
+<span class="kw">function</span> <span class="fn">DiffEditor:abort</span>()
+  <span class="pn">vim.rpcnotify</span>(<span class="kw">self</span>.client, <span class="str">"curate:done"</span>, <span class="nm">1</span>)  <span class="cm">-- → exit 1 → jj cancels, no change</span>
+  <span class="kw">self</span>:<span class="fn">close</span>()
+<span class="kw">end</span></pre>
+    <div style="background:#11121a; border:1px solid #2a2e42; border-radius:9px; padding:16px 20px; font-size:13px; line-height:1.6; color:#8b93b0"><b style="color:#bb9af7">write_back()</b> is the §3 protocol step 3 in Lua: for every de-selected hunk, splice that file region in <span style="font-family:'JetBrains Mono',monospace; color:#a9b1d6">$right</span> back to its <span style="font-family:'JetBrains Mono',monospace; color:#a9b1d6">$left</span> bytes; selected hunks stay. jj then snapshots <span style="font-family:'JetBrains Mono',monospace; color:#a9b1d6">$right</span>. The non-interactive <span style="font-family:'JetBrains Mono',monospace; color:#a9b1d6">curate://</span> write-back (§H) is the same trick with <span style="font-family:'JetBrains Mono',monospace; color:#a9b1d6">cp</span> as the whole-file tool — NicolasGB's path, generalized.</div>
+  </div>
+
+  <!-- ============ §H curate:// BUFFERS ============ -->
+  <div style="padding:48px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#bb9af7; margin-bottom:6px">§H · views/file.lua — EDIT ANY REVISION'S FILE</div>
+    <h2 style="margin:0 0 8px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em"><span style="font-family:'JetBrains Mono',monospace; font-size:20px">curate://&lt;change_id&gt;/&lt;path&gt;</span> via BufRead/WriteCmd</h2>
+    <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#9aa3b8; max-width:840px">Buffers named by <b style="color:#e6e3f0">change-id</b> survive rewrites and bookmark moves. Read pulls file content at the revision; write commits it back with the <span style="font-family:'JetBrains Mono',monospace">cp</span>-as-merge-tool trick — no temp git repo.</p>
+    <pre style="margin:0; background:#11121a; border:1px solid #2a2e42; border-radius:9px; padding:20px 22px; overflow-x:auto; font:13px/1.7 'JetBrains Mono',monospace; color:#c0caf5"><span class="cm">-- plugin/curate.lua (registered once)</span>
+<span class="kw">local</span> grp = <span class="pn">vim.api.nvim_create_augroup</span>(<span class="str">"curate.file"</span>, {})
+<span class="kw">for</span> _, ev <span class="kw">in</span> <span class="pn">ipairs</span>({ <span class="str">"BufReadCmd"</span>, <span class="str">"BufWriteCmd"</span> }) <span class="kw">do</span>
+  <span class="pn">vim.api.nvim_create_autocmd</span>(ev, { group = grp, pattern = <span class="str">"curate://*"</span>,
+    callback = <span class="kw">function</span>(a)
+      <span class="kw">local</span> fn = ev == <span class="str">"BufReadCmd"</span> <span class="kw">and</span> <span class="str">"read"</span> <span class="kw">or</span> <span class="str">"write"</span>
+      <span class="pn">require</span>(<span class="str">"curate.views.file"</span>)[fn](a.buf, a.match)
+    <span class="kw">end</span> })
+<span class="kw">end</span>
+
+<span class="cm">-- views/file.lua : write commits the buffer into &lt;change&gt; with cp-as-tool</span>
+<span class="kw">function</span> <span class="fn">M.write</span>(buf, url)
+  <span class="kw">local</span> change, path = <span class="fn">parse_url</span>(url)        <span class="cm">-- curate://CHANGE/PATH</span>
+  <span class="kw">local</span> tmp = <span class="pn">vim.fn.tempname</span>()
+  <span class="pn">vim.fn.writefile</span>(<span class="pn">vim.api.nvim_buf_get_lines</span>(buf, <span class="nm">0</span>, -<span class="nm">1</span>, <span class="kw">false</span>), tmp)
+  jj.<span class="fn">spawn</span>({ <span class="str">"diffedit"</span>, <span class="str">"--restore-descendants"</span>, <span class="str">"-r"</span>, change,
+    <span class="str">"--config"</span>, <span class="str">'merge-tools.w.program=cp'</span>,
+    <span class="str">"--config"</span>, (<span class="str">'merge-tools.w.edit-args=["%s","$right/%s"]'</span>):<span class="fn">format</span>(tmp, path),
+    <span class="str">"--tool"</span>, <span class="str">"w"</span>, <span class="str">"--"</span>, path,
+  }, {}, <span class="kw">function</span>() <span class="pn">vim.bo</span>[buf].modified = <span class="kw">false</span> <span class="kw">end</span>)
+<span class="kw">end</span></pre>
+  </div>
+
+  <!-- ============ §I WIRING ============ -->
+  <div style="padding:48px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#2bb3a3; margin-bottom:6px">§I · WIRING — plugin/ · setup · keymap registry · health</div>
+    <h2 style="margin:0 0 8px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em">One registry table feeds maps, which-key, and the cheatsheet</h2>
+    <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#9aa3b8; max-width:840px">The §2 keymap lives as data. ftplugin reads it for buffer-local <span style="font-family:'JetBrains Mono',monospace">&lt;Plug&gt;</span> maps; which-key reads it for labels; the cheatsheet is generated from it — single source of truth.</p>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px">
+      <pre style="margin:0; background:#11121a; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px; overflow-x:auto; font:12.5px/1.65 'JetBrains Mono',monospace; color:#c0caf5"><span class="cm">-- plugin/curate.lua : guard + entry (once)</span>
+<span class="kw">if</span> <span class="pn">vim.g</span>.loaded_curate <span class="kw">then</span> <span class="kw">return</span> <span class="kw">end</span>
+<span class="pn">vim.g</span>.loaded_curate = <span class="kw">true</span>
+
+<span class="pn">vim.api.nvim_create_user_command</span>(<span class="str">"Curate"</span>,
+  <span class="kw">function</span>(a)
+    <span class="kw">local</span> v = a.args ~= <span class="str">""</span> <span class="kw">and</span> a.args <span class="kw">or</span> <span class="str">"status"</span>
+    <span class="pn">require</span>(<span class="str">"curate.views."</span> .. v).<span class="fn">open</span>()
+  <span class="kw">end</span>,
+  { nargs = <span class="str">"?"</span>, complete = <span class="kw">function</span>()
+      <span class="kw">return</span> { <span class="str">"status"</span>, <span class="str">"log"</span>, <span class="str">"oplog"</span>, <span class="str">"revset"</span> }
+  <span class="kw">end</span> })
+
+<span class="cm">-- lua/curate/init.lua : the public API</span>
+<span class="kw">local</span> M = {}
+<span class="kw">function</span> <span class="fn">M.setup</span>(opts)
+  <span class="pn">require</span>(<span class="str">"curate.config"</span>).<span class="fn">apply</span>(opts <span class="kw">or</span> {})
+  <span class="pn">require</span>(<span class="str">"curate.keymap"</span>).<span class="fn">install</span>()
+<span class="kw">end</span>
+<span class="kw">return</span> M</pre>
+      <pre style="margin:0; background:#11121a; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px; overflow-x:auto; font:12.5px/1.65 'JetBrains Mono',monospace; color:#c0caf5"><span class="cm">-- keymap.lua : the registry (data, not code)</span>
+M.maps = {
+  [<span class="str">"curate-status"</span>] = {
+    { <span class="str">"n"</span>, <span class="str">"name.new"</span>,      <span class="str">"new change"</span> },
+    { <span class="str">"d"</span>, <span class="str">"name.describe"</span>, <span class="str">"describe"</span> },
+    { <span class="str">"A"</span>, <span class="str">"route.absorb"</span>, <span class="str">"absorb"</span>, rw = <span class="kw">true</span> },
+    { <span class="str">"s"</span>, <span class="str">"route.squash"</span>, <span class="str">"squash → parent"</span>, rw = <span class="kw">true</span> },
+    { <span class="str">"o"</span>, <span class="str">"trust.oplog"</span>,  <span class="str">"op-log"</span> },
+    { <span class="str">"u"</span>, <span class="str">"trust.undo"</span>,   <span class="str">"undo"</span> },
+  },
+}
+
+<span class="kw">function</span> <span class="fn">M.install</span>()
+  <span class="kw">for</span> ft, list <span class="kw">in</span> <span class="pn">pairs</span>(M.maps) <span class="kw">do</span>
+    <span class="pn">vim.api.nvim_create_autocmd</span>(<span class="str">"FileType"</span>, { pattern = ft,
+      callback = <span class="kw">function</span>(a)
+        <span class="kw">for</span> _, m <span class="kw">in</span> <span class="pn">ipairs</span>(list) <span class="kw">do</span>
+          <span class="pn">vim.keymap.set</span>(<span class="str">"n"</span>, m[<span class="nm">1</span>], <span class="kw">function</span>()
+            <span class="kw">local</span> mod, f = m[<span class="nm">2</span>]:<span class="fn">match</span>(<span class="str">"(%w+)%.(%w+)"</span>)
+            <span class="pn">require</span>(<span class="str">"curate.actions."</span>..mod)[f]()
+          <span class="kw">end</span>, { buffer = a.buf, desc = <span class="str">"curate: "</span>..m[<span class="nm">3</span>] })
+        <span class="kw">end</span>
+      <span class="kw">end</span> })
+  <span class="kw">end</span>
+<span class="kw">end</span></pre>
+    </div>
+    <pre style="margin:14px 0 0; background:#11121a; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px; overflow-x:auto; font:12.5px/1.65 'JetBrains Mono',monospace; color:#c0caf5"><span class="cm">-- health.lua : :checkhealth curate</span>
+<span class="kw">function</span> <span class="fn">M.check</span>()
+  <span class="pn">vim.health.start</span>(<span class="str">"curate"</span>)
+  <span class="kw">local</span> r = <span class="pn">require</span>(<span class="str">"curate.jj.runner"</span>).<span class="fn">sync</span>({ <span class="str">"--version"</span> })
+  <span class="kw">if</span> r.code == <span class="nm">0</span> <span class="kw">then</span> <span class="pn">vim.health.ok</span>(<span class="pn">vim.trim</span>(r.stdout))
+  <span class="kw">else</span> <span class="pn">vim.health.error</span>(<span class="str">"jj not found on PATH"</span>) <span class="kw">end</span>
+  <span class="kw">if</span> <span class="pn">vim.v.servername</span> ~= <span class="str">""</span> <span class="kw">then</span> <span class="pn">vim.health.ok</span>(<span class="str">"RPC server: "</span> .. <span class="pn">vim.v.servername</span>)
+  <span class="kw">else</span> <span class="pn">vim.health.warn</span>(<span class="str">"no servername — diff-editor needs a listen socket"</span>) <span class="kw">end</span>
+<span class="kw">end</span></pre>
+  </div>
+
+  <!-- ============ §J IDIOMS ============ -->
+  <div style="padding:48px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#9ece6a; margin-bottom:6px">§J · IDIOM CHECKLIST — 2026</div>
+    <h2 style="margin:0 0 18px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em">What makes it current — and what to refuse</h2>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px">
+      <div style="background:#141d16; border:1px solid #24351f; border-radius:9px; padding:20px 22px">
+        <div style="font:700 12px 'JetBrains Mono',monospace; color:#9ece6a; margin-bottom:12px">✓ DO</div>
+        <div style="font-size:13px; line-height:1.75; color:#a9b1d6">
+          <div><span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">vim.system</span> + <span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">vim.schedule_wrap</span> for all jj calls</div>
+          <div>extmark <b>namespaces</b> per view; clear+set on render</div>
+          <div><span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">nvim_set_decoration_provider</span> + <span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">ephemeral</span> for live state</div>
+          <div><b>filetype</b> + ftplugin for buffer-local maps; <span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">&lt;Plug&gt;</span> verbs</div>
+          <div><span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">---@class / ---@field</span> LuaCATS on the model (lua_ls)</div>
+          <div><span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">vim.ui.input / vim.ui.select</span> — respect the user's picker</div>
+          <div><span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">vim.iter / vim.gsplit / vim.split</span> (0.10+)</div>
+          <div>whole-buffer re-render — jj is fast; simplicity &gt; patching</div>
+        </div>
+      </div>
+      <div style="background:#1f1417; border:1px solid #3a2026; border-radius:9px; padding:20px 22px">
+        <div style="font:700 12px 'JetBrains Mono',monospace; color:#f7768e; margin-bottom:12px">✕ REFUSE</div>
+        <div style="font-size:13px; line-height:1.75; color:#a9b1d6">
+          <div>a shell — <span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">os.execute</span> / <span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">sh -c</span> / string-built cmds</div>
+          <div>scraping rendered log/graph glyphs for data</div>
+          <div>blocking <span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">vim.fn.system()</span> on a keypress</div>
+          <div><span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">matchadd</span> / syntax regions for <i>dynamic</i> highlight</div>
+          <div>module-level mutable globals — state lives on the view</div>
+          <div>one 2000-line <span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">init.lua</span></div>
+          <div>re-implementing gutter signs (defer to vcsigns)</div>
+          <div>requiring heavy deps — plenary etc. stay optional</div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:18px; padding:18px 22px; background:#11121a; border:1px solid #2a2e42; border-radius:9px; font-size:14px; line-height:1.6; color:#9aa3b8"><span style="font:700 11px 'JetBrains Mono',monospace; letter-spacing:.1em; color:#bb9af7">THE SHAPE</span> &nbsp; Five primitives carry everything: the <b style="color:#e6e3f0">runner</b> (argv), the <b style="color:#e6e3f0">parser</b> (typed model), the <b style="color:#e6e3f0">View</b> base (buffer lifecycle), the <b style="color:#e6e3f0">render path</b> (extmarks + decoration provider), and the <b style="color:#e6e3f0">remote-wait shim</b> (the diff-editor). Build those and every board frame is a thin <span style="font-family:'JetBrains Mono',monospace">:render()</span> + a registry row on top.</div>
+  </div>
+
+  <div style="padding:50px 0 0; text-align:center; font:500 12px 'JetBrains Mono',monospace; color:#3a3f58">curate.nvim · lua architecture sketch · companion to the v1 spec &amp; the design board</div>
+
+</div>
+</div>
+</x-dc>
+</body>
+</html>

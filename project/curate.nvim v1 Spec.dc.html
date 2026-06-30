@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; background: #16161e; }
+  ::selection { background: #283457; }
+  * { box-sizing: border-box; }
+</style>
+</helmet>
+
+<div style="background:#16161e; color:#c0caf5; font-family:Inter,sans-serif; min-height:100vh; padding:0 0 120px">
+<div style="max-width:1040px; margin:0 auto; padding:0 28px">
+
+  <!-- ============ MASTHEAD ============ -->
+  <div style="padding:64px 0 30px; border-bottom:1px solid #2a2e42">
+    <div style="font:600 12px/1 'JetBrains Mono',monospace; letter-spacing:.18em; text-transform:uppercase; color:#565f89; margin-bottom:18px">build-ready spec · v1 · the core loop</div>
+    <div style="font:800 46px/1 'JetBrains Mono',monospace; color:#fff; letter-spacing:-.02em">curate<span style="color:#bb9af7">.nvim</span></div>
+    <div style="margin-top:18px; font-size:18px; line-height:1.5; color:#a9b1d6; max-width:760px">The one tool for moving changes into the right commit. This document specifies <b style="color:#e6e3f0">the core loop</b> — exact keymap, the diff-editor protocol, and the absorb / squash / op-log screens — at the fidelity an engineer needs to start. <span style="color:#8b93b0">A companion doc maps these views to Lua.</span></div>
+    <div style="display:flex; gap:10px; margin-top:22px; flex-wrap:wrap; font:600 11px 'JetBrains Mono',monospace">
+      <span style="background:#1e2740; color:#7aa2f7; padding:6px 12px; border-radius:30px">SEE</span>
+      <span style="color:#3a3f58; align-self:center">→</span>
+      <span style="background:#241b3a; color:#bb9af7; padding:6px 12px; border-radius:30px">ROUTE ★</span>
+      <span style="color:#3a3f58; align-self:center">→</span>
+      <span style="background:#1c2a17; color:#9ece6a; padding:6px 12px; border-radius:30px">NAME</span>
+      <span style="color:#3a3f58; align-self:center">→</span>
+      <span style="background:#2e1820; color:#f7768e; padding:6px 12px; border-radius:30px">TRUST</span>
+      <span style="margin-left:auto; align-self:center; color:#3a3f58">maps to phases P0–P3 + narrow P6</span>
+    </div>
+  </div>
+
+  <!-- ============ §1 ARCHITECTURE ============ -->
+  <div style="padding:46px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#7dcfff; margin-bottom:6px">§1 · ARCHITECTURE SPINE</div>
+    <h2 style="margin:0 0 8px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em">The data layer (P0) — get this right or everything rots</h2>
+    <p style="margin:0 0 22px; font-size:15px; line-height:1.6; color:#9aa3b8; max-width:780px">Three non-negotiables, drawn directly from what reading NicolasGB's source taught us.</p>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:24px">
+      <div style="background:#1a1b26; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px">
+        <div style="font:700 11px 'JetBrains Mono',monospace; color:#73daca; margin-bottom:8px">EXEC</div>
+        <div style="font-size:13px; line-height:1.55; color:#a9b1d6">Argv arrays via <span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">vim.system({"jj",…})</span> — <b style="color:#fff">no shell</b>, no quoting bugs. Async with callbacks; a raw-stdout variant that preserves NUL bytes for templates.</div>
+      </div>
+      <div style="background:#1a1b26; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px">
+        <div style="font:700 11px 'JetBrains Mono',monospace; color:#73daca; margin-bottom:8px">IDENTITY</div>
+        <div style="font-size:13px; line-height:1.55; color:#a9b1d6">Anchor <b style="color:#fff">everything</b> — buffers, marks, op refs — on <span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">change_id</span>. Never commit_id, never bookmark. Survives rewrites mid-session.</div>
+      </div>
+      <div style="background:#1a1b26; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px">
+        <div style="font:700 11px 'JetBrains Mono',monospace; color:#73daca; margin-bottom:8px">READ MODEL</div>
+        <div style="font-size:13px; line-height:1.55; color:#a9b1d6">One template, <b style="color:#fff">NUL/control-byte separated</b> fields. Never scrape graph glyphs or human output. Graph topology comes from parent change-ids, computed by us.</div>
+      </div>
+    </div>
+
+    <div style="font:600 12px 'JetBrains Mono',monospace; color:#565f89; margin-bottom:8px">the one read query — parse this, nothing else</div>
+    <pre style="margin:0 0 14px; background:#11121a; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px; overflow-x:auto; font:13px/1.7 'JetBrains Mono',monospace; color:#c0caf5">jj log --no-graph --color=never -r <span style="color:#7dcfff">&lt;revset&gt;</span> -T '
+  change_id                       <span style="color:#3a3f58">++ US ++</span>
+  commit_id.short(8)              <span style="color:#3a3f58">++ US ++</span>
+  author.email()                  <span style="color:#3a3f58">++ US ++</span>
+  committer.timestamp().ago()     <span style="color:#3a3f58">++ US ++</span>
+  description.first_line()        <span style="color:#3a3f58">++ US ++</span>
+  parents.map(|c| c.change_id())  <span style="color:#3a3f58">++ US ++</span>   <span style="color:#565f89"># graph edges</span>
+  if(conflict,"C","") ++ if(divergent,"D","") ++ if(immutable,"I","")
+  <span style="color:#3a3f58">++ RS</span>
+'
+<span style="color:#565f89">US = \x1f (unit sep)   RS = \x1e (record sep)   — bytes that cannot occur in the data</span></pre>
+    <p style="margin:0 0 8px; font-size:13.5px; line-height:1.6; color:#9aa3b8">Split stdout on <span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">\x1e</span> → records; each on <span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">\x1f</span> → fields. The <span style="font-family:'JetBrains Mono',monospace; color:#c0caf5">parents</span> field gives the DAG edges; we lay out the graph ourselves so a custom theme or glyph set never breaks parsing. Refresh on <span style="font-family:'JetBrains Mono',monospace; color:#9ece6a">g</span>, and debounced (~80ms) after any mutation.</p>
+  </div>
+
+  <!-- ============ §2 KEYMAP ============ -->
+  <div style="padding:48px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#7dcfff; margin-bottom:6px">§2 · THE KEYMAP — THE CONTRACT</div>
+    <h2 style="margin:0 0 8px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em">Complete bindings for the core loop</h2>
+    <p style="margin:0 0 22px; font-size:15px; line-height:1.6; color:#9aa3b8; max-width:780px">Lower-case = safe · UPPER-case = rewrites history · every binding exposed as a <span style="font-family:'JetBrains Mono',monospace">&lt;Plug&gt;</span> map. Counts apply (<span style="font-family:'JetBrains Mono',monospace">3s</span>); <span style="font-family:'JetBrains Mono',monospace">.</span> repeats the last mutation.</p>
+
+    <!-- home buffer -->
+    <div style="font:700 11px 'JetBrains Mono',monospace; letter-spacing:.08em; color:#7aa2f7; margin:0 0 8px">HOME / LOG BUFFER</div>
+    <div style="background:#1a1b26; border:1px solid #2a2e42; border-radius:9px; overflow:hidden; margin-bottom:18px; font:13px/1 'JetBrains Mono',monospace">
+      <div style="display:grid; grid-template-columns:90px 1fr 1.3fr 80px; padding:10px 18px; color:#565f89; font-size:11px; letter-spacing:.06em; border-bottom:1px solid #2a2e42">
+        <span>KEY</span><span>ACTION</span><span>jj</span><span style="text-align:right">REWRITES</span>
+      </div>
+      <div style="padding:6px 0">
+        <div style="display:grid; grid-template-columns:90px 1fr 1.3fr 80px; padding:7px 18px; color:#c0caf5; align-items:center"><span style="color:#9ece6a">&lt;CR&gt;</span><span>edit / expand under cursor</span><span style="color:#565f89">jj edit / fold</span><span></span></div>
+        <div style="display:grid; grid-template-columns:90px 1fr 1.3fr 80px; padding:7px 18px; color:#c0caf5; align-items:center; background:#191b28"><span style="color:#9ece6a">Tab</span><span>cycle fold (file → hunks)</span><span style="color:#565f89">—</span><span></span></div>
+        <div style="display:grid; grid-template-columns:90px 1fr 1.3fr 80px; padding:7px 18px; color:#c0caf5; align-items:center"><span style="color:#9ece6a">[c ]c</span><span>prev / next hunk</span><span style="color:#565f89">—</span><span></span></div>
+        <div style="display:grid; grid-template-columns:90px 1fr 1.3fr 80px; padding:7px 18px; color:#c0caf5; align-items:center; background:#191b28"><span style="color:#9ece6a">n</span><span>new change</span><span style="color:#565f89">jj new</span><span></span></div>
+        <div style="display:grid; grid-template-columns:90px 1fr 1.3fr 80px; padding:7px 18px; color:#c0caf5; align-items:center"><span style="color:#9ece6a">d</span><span>describe</span><span style="color:#565f89">jj describe</span><span></span></div>
+        <div style="display:grid; grid-template-columns:90px 1fr 1.3fr 80px; padding:7px 18px; color:#c0caf5; align-items:center; background:#191b28"><span style="color:#9ece6a">c</span><span>commit (describe + new)</span><span style="color:#565f89">jj commit</span><span></span></div>
+        <div style="display:grid; grid-template-columns:90px 1fr 1.3fr 80px; padding:7px 18px; color:#c0caf5; align-items:center"><span style="color:#bb9af7; font-weight:700">A</span><span>absorb working copy</span><span style="color:#565f89">jj absorb</span><span style="text-align:right; color:#e0af68">✔</span></div>
+        <div style="display:grid; grid-template-columns:90px 1fr 1.3fr 80px; padding:7px 18px; color:#c0caf5; align-items:center; background:#191b28"><span style="color:#bb9af7; font-weight:700">s</span><span>squash into parent</span><span style="color:#565f89">jj squash</span><span style="text-align:right; color:#e0af68">✔</span></div>
+        <div style="display:grid; grid-template-columns:90px 1fr 1.3fr 80px; padding:7px 18px; color:#c0caf5; align-items:center"><span style="color:#bb9af7; font-weight:700">S</span><span>squash interactively (hunks)</span><span style="color:#565f89">jj squash -i</span><span style="text-align:right; color:#e0af68">✔</span></div>
+        <div style="display:grid; grid-template-columns:90px 1fr 1.3fr 80px; padding:7px 18px; color:#c0caf5; align-items:center; background:#191b28"><span style="color:#bb9af7; font-weight:700">x</span><span>split interactively (hunks)</span><span style="color:#565f89">jj split -i</span><span style="text-align:right; color:#e0af68">✔</span></div>
+        <div style="display:grid; grid-template-columns:90px 1fr 1.3fr 80px; padding:7px 18px; color:#c0caf5; align-items:center"><span style="color:#9ece6a">=</span><span>restore hunk/file from parent</span><span style="color:#565f89">jj restore</span><span style="text-align:right; color:#e0af68">✔</span></div>
+        <div style="display:grid; grid-template-columns:90px 1fr 1.3fr 80px; padding:7px 18px; color:#c0caf5; align-items:center; background:#191b28"><span style="color:#9ece6a">o</span><span>open op-log</span><span style="color:#565f89">jj op log</span><span></span></div>
+        <div style="display:grid; grid-template-columns:90px 1fr 1.3fr 80px; padding:7px 18px; color:#c0caf5; align-items:center"><span style="color:#9ece6a">u</span><span>undo last op</span><span style="color:#565f89">jj undo</span><span></span></div>
+        <div style="display:grid; grid-template-columns:90px 1fr 1.3fr 80px; padding:7px 18px; color:#c0caf5; align-items:center; background:#191b28"><span style="color:#9ece6a">g</span><span>refresh · <span style="color:#9ece6a">$</span> process buffer · <span style="color:#9ece6a">?</span> which-key</span><span style="color:#565f89">—</span><span></span></div>
+        <div style="display:grid; grid-template-columns:90px 1fr 1.3fr 80px; padding:7px 18px; color:#c0caf5; align-items:center"><span style="color:#9aa3b8">r · b · gp · gf</span><span style="color:#9aa3b8">supporting: rebase · bookmark · push · fetch</span><span style="color:#565f89">—</span><span></span></div>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px">
+      <div>
+        <div style="font:700 11px 'JetBrains Mono',monospace; letter-spacing:.08em; color:#bb9af7; margin:0 0 8px">DIFF-EDITOR BUFFER</div>
+        <div style="background:#1a1b26; border:1px solid #2a2e42; border-radius:9px; padding:8px 0; font:13px/1 'JetBrains Mono',monospace">
+          <div style="display:grid; grid-template-columns:78px 1fr; padding:7px 18px; color:#c0caf5"><span style="color:#9ece6a">&lt;space&gt;</span><span>toggle hunk</span></div>
+          <div style="display:grid; grid-template-columns:78px 1fr; padding:7px 18px; color:#c0caf5; background:#191b28"><span style="color:#9ece6a">Tab</span><span>switch tree / diff pane</span></div>
+          <div style="display:grid; grid-template-columns:78px 1fr; padding:7px 18px; color:#c0caf5"><span style="color:#9ece6a">[c ]c</span><span>prev / next hunk</span></div>
+          <div style="display:grid; grid-template-columns:78px 1fr; padding:7px 18px; color:#c0caf5; background:#191b28"><span style="color:#9ece6a">a / A</span><span>toggle file / all</span></div>
+          <div style="display:grid; grid-template-columns:78px 1fr; padding:7px 18px; color:#c0caf5"><span style="color:#9ece6a">&lt;CR&gt;</span><span>confirm → write &amp; exit 0</span></div>
+          <div style="display:grid; grid-template-columns:78px 1fr; padding:7px 18px; color:#c0caf5; background:#191b28"><span style="color:#f7768e">q</span><span>abort → exit ≠0 (jj cancels)</span></div>
+        </div>
+      </div>
+      <div>
+        <div style="font:700 11px 'JetBrains Mono',monospace; letter-spacing:.08em; color:#f7768e; margin:0 0 8px">OP-LOG BUFFER</div>
+        <div style="background:#1a1b26; border:1px solid #2a2e42; border-radius:9px; padding:8px 0; font:13px/1 'JetBrains Mono',monospace">
+          <div style="display:grid; grid-template-columns:78px 1fr; padding:7px 18px; color:#c0caf5"><span style="color:#9ece6a">&lt;CR&gt;</span><span>restore to op (confirm)</span></div>
+          <div style="display:grid; grid-template-columns:78px 1fr; padding:7px 18px; color:#c0caf5; background:#191b28"><span style="color:#9ece6a">g- g+</span><span>undo / redo walk</span></div>
+          <div style="display:grid; grid-template-columns:78px 1fr; padding:7px 18px; color:#c0caf5"><span style="color:#9ece6a">=</span><span>diff this op caused</span></div>
+          <div style="display:grid; grid-template-columns:78px 1fr; padding:7px 18px; color:#c0caf5; background:#191b28"><span style="color:#9ece6a">L</span><span>evolog of change under cursor</span></div>
+          <div style="display:grid; grid-template-columns:78px 1fr; padding:7px 18px; color:#c0caf5"><span style="color:#9ece6a">u</span><span>undo last (global)</span></div>
+          <div style="display:grid; grid-template-columns:78px 1fr; padding:7px 18px; color:#565f89"><span style="color:#3a3f58">·</span><span>append-only — restore writes a NEW op</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ §3 DIFF-EDITOR PROTOCOL ============ -->
+  <div style="padding:48px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#bb9af7; margin-bottom:6px">§3 · ROUTE ★ — THE DIFF-EDITOR</div>
+    <h2 style="margin:0 0 8px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em">How curate becomes jj's diff &amp; merge editor</h2>
+    <p style="margin:0 0 22px; font-size:15px; line-height:1.6; color:#9aa3b8; max-width:820px">This is the wedge. The protocol below is jj's real diff-editor contract — the same one that powers <span style="font-family:'JetBrains Mono',monospace">split -i</span>, <span style="font-family:'JetBrains Mono',monospace">squash -i</span>, and <span style="font-family:'JetBrains Mono',monospace">diffedit</span> — so building it once unlocks all of ROUTE.</p>
+
+    <div style="font:600 12px 'JetBrains Mono',monospace; color:#565f89; margin-bottom:8px">registration — point jj's diff-editor at a thin launcher that talks to the running nvim</div>
+    <pre style="margin:0 0 16px; background:#11121a; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px; overflow-x:auto; font:13px/1.7 'JetBrains Mono',monospace; color:#c0caf5"><span style="color:#565f89"># curate injects these --config flags on every interactive call:</span>
+--config <span style="color:#9ece6a">ui.diff-editor=curate</span>
+--config <span style="color:#9ece6a">merge-tools.curate.edit-args=["$left","$right"]</span>
+--config <span style="color:#9ece6a">merge-tools.curate.program="curate-diff-shim"</span>
+
+<span style="color:#565f89"># curate-diff-shim: a ~20-line script. It does NOT open its own editor —
+# it connects to the already-running nvim via $NVIM (the RPC socket),
+# tells it to open the hunk buffer on $left/$right, then blocks on exit code.</span></pre>
+
+    <div style="background:#1a1b26; border:1px solid #2a2e42; border-radius:9px; padding:22px 24px; margin-bottom:18px">
+      <div style="font:700 12px 'JetBrains Mono',monospace; color:#7dcfff; margin-bottom:14px">THE PROTOCOL — what jj hands us, what we hand back</div>
+      <div style="display:grid; grid-template-columns:30px 1fr; gap:14px 14px; font-size:14px; line-height:1.55; color:#a9b1d6">
+        <div style="font:700 14px 'JetBrains Mono',monospace; color:#bb9af7">1</div><div>jj materializes two dirs: <span style="font-family:'JetBrains Mono',monospace; color:#7dcfff">$left</span> (the "before" tree) and <span style="font-family:'JetBrains Mono',monospace; color:#7dcfff">$right</span> (a writable copy of the "after" tree), then invokes our program and <b style="color:#fff">blocks</b>.</div>
+        <div style="font:700 14px 'JetBrains Mono',monospace; color:#bb9af7">2</div><div>curate opens the hunk-selection buffer, diffing <span style="font-family:'JetBrains Mono',monospace">$left</span> ↔ <span style="font-family:'JetBrains Mono',monospace">$right</span>. Every hunk starts <b style="color:#9ece6a">selected</b> (= included in the result).</div>
+        <div style="font:700 14px 'JetBrains Mono',monospace; color:#bb9af7">3</div><div>The user toggles hunks off. On <span style="font-family:'JetBrains Mono',monospace; color:#9ece6a">&lt;CR&gt;</span> curate <b style="color:#fff">edits <span style="font-family:'JetBrains Mono',monospace">$right</span> in place</b>: for every <i>de</i>selected hunk, revert that region of the file back to its <span style="font-family:'JetBrains Mono',monospace">$left</span> content. Selected hunks stay.</div>
+        <div style="font:700 14px 'JetBrains Mono',monospace; color:#bb9af7">4</div><div>curate exits <span style="color:#9ece6a">0</span>. jj snapshots <span style="font-family:'JetBrains Mono',monospace">$right</span> and records the diff. On <span style="font-family:'JetBrains Mono',monospace; color:#f7768e">q</span> we exit non-zero → jj cancels cleanly, nothing changes.</div>
+      </div>
+      <div style="margin-top:16px; padding-top:14px; border-top:1px solid #2a2e42; font-size:13px; line-height:1.55; color:#8b93b0"><b style="color:#bb9af7">Why this beats the git-shim:</b> no temp git repo, no <span style="font-family:'JetBrains Mono',monospace">intent-to-add</span> dance. We edit a directory jj already prepared and exit. NicolasGB's <span style="font-family:'JetBrains Mono',monospace">cp</span>-as-merge-tool trick is the <i>non-interactive</i> special case of this same contract (write one file, exit) — we generalize it to interactive per-hunk selection.</div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:8px">
+      <div style="background:#1a1b26; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px">
+        <div style="font:700 11px 'JetBrains Mono',monospace; color:#7dcfff; margin-bottom:10px">ONE BUFFER, FOUR MODES</div>
+        <div style="font-size:13px; line-height:1.7; color:#a9b1d6">Same UI; only the target semantics and statusline label change.<br>
+        <span style="font-family:'JetBrains Mono',monospace; color:#bb9af7">SPLIT</span> — selection = the <i>first</i> change<br>
+        <span style="font-family:'JetBrains Mono',monospace; color:#bb9af7">SQUASH-i</span> — selection moves into the target<br>
+        <span style="font-family:'JetBrains Mono',monospace; color:#bb9af7">DIFFEDIT</span> — selection = new content of @<br>
+        <span style="font-family:'JetBrains Mono',monospace; color:#bb9af7">RESTORE</span> — selection = reverted from parent</div>
+      </div>
+      <div style="background:#1a1b26; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px">
+        <div style="font:700 11px 'JetBrains Mono',monospace; color:#e0af68; margin-bottom:10px">EDGE CASES (v1)</div>
+        <div style="font-size:13px; line-height:1.7; color:#a9b1d6">• zero hunks selected → abort cleanly, no empty change<br>
+        • binary / un-diffable file → file-level toggle only<br>
+        • immutable target → confirm prompt before launch<br>
+        • partial-line selection → <b style="color:#8b93b0">out of v1</b> (hunk is the atom)<br>
+        • encoding: reuse the UTF-16/32 + BOM round-trip</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- diff-editor mock -->
+  <div style="margin:22px 0 0; background:#16161e; border:1px solid #3753a6; border-radius:9px; box-shadow:0 14px 40px rgba(40,52,87,.34); overflow:hidden">
+    <div style="display:flex; align-items:center; gap:7px; height:32px; padding:0 13px; background:#1f2335; border-bottom:1px solid #2a2e42">
+      <span style="width:9px; height:9px; border-radius:50%; background:#f7768e"></span><span style="width:9px; height:9px; border-radius:50%; background:#e0af68"></span><span style="width:9px; height:9px; border-radius:50%; background:#9ece6a"></span>
+      <span style="margin-left:9px; font:500 11px 'JetBrains Mono',monospace; color:#7dcfff">curate · diff-editor · SPLIT</span>
+    </div>
+    <div style="display:flex; font:13px/20px 'JetBrains Mono',monospace; color:#c0caf5">
+      <div style="flex:0 0 38%; padding:13px 16px; border-right:1px solid #2a2e42">
+        <div style="white-space:pre; color:#565f89; font-size:11px; margin-bottom:4px">HUNKS → FIRST CHANGE</div>
+        <div style="white-space:pre"><span style="color:#9ece6a">[✓]</span> src/diff/hunks.lua  <span style="color:#9ece6a">+42</span> <span style="color:#f7768e">-7</span></div>
+        <div style="white-space:pre; background:#283457; margin:0 -16px; padding:0 16px"><span style="color:#565f89">│</span> <span style="color:#9ece6a">[✓]</span> <span style="color:#7dcfff">@@ -18 collect()</span></div>
+        <div style="white-space:pre"><span style="color:#565f89">│</span> <span style="color:#565f89">[ ] @@ -54 apply()</span></div>
+        <div style="white-space:pre"><span style="color:#565f89">[ ] src/ui/status.lua  +8 -3</span></div>
+        <div style="white-space:pre"><span style="color:#9ece6a">[✓]</span> lua/jj/init.lua     <span style="color:#9ece6a">+1</span></div>
+        <div style="white-space:pre; color:#565f89; margin-top:8px">2 / 4 hunks · &lt;space&gt; toggle</div>
+      </div>
+      <div style="flex:1; padding:13px 16px">
+        <div style="white-space:pre; color:#7dcfff">@@ -18,6 +18,9 @@ collect()</div>
+        <div style="white-space:pre"><span style="color:#3a3f58">18</span>   local hunks = parse(raw)</div>
+        <div style="white-space:pre; background:rgba(158,206,106,.1); color:#9ece6a; margin:0 -16px; padding:0 16px"><span style="color:#3a3f58">20</span> + local sel = {}</div>
+        <div style="white-space:pre; background:rgba(158,206,106,.1); color:#9ece6a; margin:0 -16px; padding:0 16px"><span style="color:#3a3f58">21</span> + for _,h in ipairs(hunks) do</div>
+        <div style="white-space:pre; background:rgba(158,206,106,.1); color:#9ece6a; margin:0 -16px; padding:0 16px"><span style="color:#3a3f58">22</span> +   sel[h.id] = false end</div>
+        <div style="white-space:pre"><span style="color:#3a3f58">23</span>   for _,h in ipairs(hunks)…</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:stretch; height:24px; font:600 11px/24px 'JetBrains Mono',monospace">
+      <span style="background:#bb9af7; color:#16161e; padding:0 12px">DIFF-EDITOR</span>
+      <span style="background:#2a2e42; color:#7dcfff; padding:0 12px">SPLIT · selection = first change</span>
+      <span style="flex:1; background:#1f2335"></span>
+      <span style="background:#2a2e42; color:#a9b1d6; padding:0 12px">&lt;CR&gt; confirm · q abort</span>
+    </div>
+  </div>
+
+  <!-- ============ §4 ABSORB ============ -->
+  <div style="padding:48px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#bb9af7; margin-bottom:6px">§4 · ROUTE — ABSORB</div>
+    <h2 style="margin:0 0 8px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em">Auto-route every hunk to the ancestor that last touched it</h2>
+    <p style="margin:0 0 20px; font-size:15px; line-height:1.6; color:#9aa3b8; max-width:820px">The fastest path through ROUTE — no selection at all when jj can decide. <span style="font-family:'JetBrains Mono',monospace; color:#9ece6a">A</span> previews, <span style="font-family:'JetBrains Mono',monospace; color:#9ece6a">&lt;CR&gt;</span> confirms, one undoable op.</p>
+    <div style="background:#16161e; border:1px solid #2a2e42; border-radius:9px; overflow:hidden">
+      <div style="display:flex; align-items:center; gap:7px; height:32px; padding:0 13px; background:#1f2335; border-bottom:1px solid #2a2e42">
+        <span style="width:9px; height:9px; border-radius:50%; background:#f7768e"></span><span style="width:9px; height:9px; border-radius:50%; background:#e0af68"></span><span style="width:9px; height:9px; border-radius:50%; background:#9ece6a"></span>
+        <span style="margin-left:9px; font:500 11px 'JetBrains Mono',monospace; color:#7dcfff">curate · absorb · preview</span>
+      </div>
+      <div style="padding:14px 18px; font:13px/22px 'JetBrains Mono',monospace; color:#c0caf5">
+        <div style="white-space:pre; color:#565f89; font-size:11px">EACH HUNK → CLOSEST MUTABLE ANCESTOR THAT LAST TOUCHED THOSE LINES</div>
+        <div style="white-space:pre; margin-top:6px">hunks.lua <span style="color:#565f89">@@ -20</span>  <span style="color:#9ece6a">──▶</span>  <span style="color:#7aa2f7">○</span> <span style="color:#bb9af7">qprstuv</span> refactor: split status</div>
+        <div style="white-space:pre">hunks.lua <span style="color:#565f89">@@ -54</span>  <span style="color:#9ece6a">──▶</span>  <span style="color:#7aa2f7">○</span> <span style="color:#bb9af7">mnoptqr</span> wip: absorb</div>
+        <div style="white-space:pre">status.lua <span style="color:#565f89">@@ -31</span> <span style="color:#9ece6a">──▶</span>  <span style="color:#7aa2f7">○</span> <span style="color:#bb9af7">qprstuv</span> refactor: split status</div>
+        <div style="white-space:pre">init.lua  <span style="color:#565f89">@@ -1</span>   <span style="color:#e0af68">──×</span>  <span style="color:#73daca">@</span> <span style="color:#565f89">stays — ambiguous target</span></div>
+        <div style="white-space:pre; margin-top:8px; color:#565f89">3 routed · 1 kept · descendants auto-rebase · one <span style="color:#7dcfff">u</span> reverts all</div>
+        <div style="white-space:pre; color:#565f89"><span style="color:#9ece6a">A</span> run   <span style="color:#9ece6a">p</span> preview   <span style="color:#9ece6a">&lt;CR&gt;</span> confirm</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ §5 SQUASH ============ -->
+  <div style="padding:48px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#bb9af7; margin-bottom:6px">§5 · ROUTE — SQUASH</div>
+    <h2 style="margin:0 0 14px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em">Three grains of squash</h2>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px">
+      <div style="background:#1a1b26; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px">
+        <div style="font:700 13px 'JetBrains Mono',monospace; color:#9ece6a; margin-bottom:6px">s</div>
+        <div style="font-size:13px; line-height:1.5; color:#a9b1d6">whole @ into its parent. The 80% case — one key, with the <span style="font-family:'JetBrains Mono',monospace">u</span> safety net.</div>
+      </div>
+      <div style="background:#1a1b26; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px">
+        <div style="font:700 13px 'JetBrains Mono',monospace; color:#9ece6a; margin-bottom:6px">S</div>
+        <div style="font-size:13px; line-height:1.5; color:#a9b1d6">interactive — opens the diff-editor in <span style="font-family:'JetBrains Mono',monospace; color:#bb9af7">SQUASH-i</span> mode; selected hunks move into the target.</div>
+      </div>
+      <div style="background:#1a1b26; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px">
+        <div style="font:700 13px 'JetBrains Mono',monospace; color:#9ece6a; margin-bottom:6px">m → s</div>
+        <div style="font-size:13px; line-height:1.5; color:#a9b1d6">mark a target first, then <span style="font-family:'JetBrains Mono',monospace">s</span> squashes into the mark instead of the parent. Live highlight on the destination as you move.</div>
+      </div>
+    </div>
+    <p style="margin:14px 0 0; font-size:13px; line-height:1.6; color:#8b93b0">Borrowed from NicolasGB: the <b style="color:#a9b1d6">live destination highlight</b> while choosing a target. Hosted inside our transient grammar, not a one-off mode.</p>
+  </div>
+
+  <!-- ============ §6 NAME ============ -->
+  <div style="padding:48px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#9ece6a; margin-bottom:6px">§6 · NAME</div>
+    <h2 style="margin:0 0 14px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em">Describe &amp; seal</h2>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px">
+      <div style="background:#1a1b26; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px">
+        <div style="font:700 13px 'JetBrains Mono',monospace; color:#9ece6a; margin-bottom:6px">d — describe</div>
+        <div style="font-size:13px; line-height:1.55; color:#a9b1d6">git-style message buffer (changed files shown, syntax-highlit). <span style="font-family:'JetBrains Mono',monospace">:w</span> applies, <span style="font-family:'JetBrains Mono',monospace">q</span> cancels. Editable on @ anytime — there's no "final" commit.</div>
+      </div>
+      <div style="background:#1a1b26; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px">
+        <div style="font:700 13px 'JetBrains Mono',monospace; color:#9ece6a; margin-bottom:6px">c — commit</div>
+        <div style="font-size:13px; line-height:1.55; color:#a9b1d6">describe @, then <span style="font-family:'JetBrains Mono',monospace">jj new</span> — seal this change and start the next. Pure convenience over <span style="font-family:'JetBrains Mono',monospace">d</span> + <span style="font-family:'JetBrains Mono',monospace">n</span>.</div>
+      </div>
+      <div style="background:#1a1b26; border:1px solid #2a2e42; border-radius:9px; padding:18px 20px">
+        <div style="font:700 13px 'JetBrains Mono',monospace; color:#9ece6a; margin-bottom:6px">n — new</div>
+        <div style="font-size:13px; line-height:1.55; color:#a9b1d6">empty change atop @ (or atop the cursor change). The fresh canvas for the next unit of work.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ §7 TRUST ============ -->
+  <div style="padding:48px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#f7768e; margin-bottom:6px">§7 · TRUST — THE OP-LOG TIME MACHINE</div>
+    <h2 style="margin:0 0 8px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em">Every route above is one keystroke from undone</h2>
+    <p style="margin:0 0 20px; font-size:15px; line-height:1.6; color:#9aa3b8; max-width:820px">This is what makes ROUTE fearless — and it's the surface NicolasGB doesn't have (they ship <span style="font-family:'JetBrains Mono',monospace">undo</span>/<span style="font-family:'JetBrains Mono',monospace">redo</span> only). Whole-repo, reversible, <b style="color:#e6e3f0">append-only</b>.</p>
+    <div style="background:#16161e; border:1px solid #2a2e42; border-radius:9px; overflow:hidden">
+      <div style="display:flex; align-items:center; gap:7px; height:32px; padding:0 13px; background:#1f2335; border-bottom:1px solid #2a2e42">
+        <span style="width:9px; height:9px; border-radius:50%; background:#f7768e"></span><span style="width:9px; height:9px; border-radius:50%; background:#e0af68"></span><span style="width:9px; height:9px; border-radius:50%; background:#9ece6a"></span>
+        <span style="margin-left:9px; font:500 11px 'JetBrains Mono',monospace; color:#7dcfff">curate · op log</span>
+      </div>
+      <div style="display:flex; font:13px/22px 'JetBrains Mono',monospace; color:#c0caf5">
+        <div style="flex:0 0 52%; padding:13px 16px; border-right:1px solid #2a2e42">
+          <div style="white-space:pre; background:#283457; margin:0 -16px; padding:0 16px"><span style="color:#f7768e">●</span> <span style="color:#565f89">now</span>   absorb 3 hunks</div>
+          <div style="white-space:pre"><span style="color:#565f89">◌  2m</span>    squash @ → @-</div>
+          <div style="white-space:pre"><span style="color:#565f89">◌  6m</span>    describe @</div>
+          <div style="white-space:pre"><span style="color:#565f89">◌  14m</span>   split kxslotm</div>
+          <div style="white-space:pre"><span style="color:#565f89">◌  1h</span>    git fetch</div>
+        </div>
+        <div style="flex:1; padding:13px 16px">
+          <div style="white-space:pre; color:#565f89; font-size:11px">DIFF THIS OP CAUSED</div>
+          <div style="white-space:pre; color:#7dcfff">@- hunks.lua</div>
+          <div style="white-space:pre; color:#9ece6a">  + sel = {} … (3 hunks)</div>
+          <div style="white-space:pre; color:#7dcfff">@  hunks.lua</div>
+          <div style="white-space:pre; color:#f7768e">  - sel = {} (moved down)</div>
+        </div>
+      </div>
+      <div style="padding:11px 16px; background:#1a1b26; border-top:1px solid #2a2e42; font:12px/1.5 'JetBrains Mono',monospace; color:#565f89">
+        <span style="color:#7dcfff">&lt;CR&gt;</span> restore <span style="color:#9ece6a">(safe)</span> · <span style="color:#7dcfff">g- g+</span> walk · <span style="color:#7dcfff">=</span> diff · <span style="color:#7dcfff">L</span> evolog · <span style="color:#7dcfff">u</span> undo<br>
+        <span style="color:#3a3f58">restore writes a NEW op — forward history is never lost</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ §8 BUILD CHECKLIST ============ -->
+  <div style="padding:48px 0 0">
+    <div style="font:700 13px/1 'JetBrains Mono',monospace; letter-spacing:.1em; color:#7dcfff; margin-bottom:6px">§8 · BUILD CHECKLIST</div>
+    <h2 style="margin:0 0 18px; font-size:24px; font-weight:700; color:#fff; letter-spacing:-.01em">Definition of done — the spine, in order</h2>
+    <div style="display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1a1b26; border:1px solid #2a2e42; border-left:3px solid #8891b0; border-radius:8px; padding:16px 20px">
+        <div style="font:700 12px 'JetBrains Mono',monospace; color:#8891b0; margin-bottom:6px">P0 · DATA LAYER</div>
+        <div style="font-size:13px; line-height:1.6; color:#a9b1d6">argv exec wrapper (sync + async + raw/NUL) · the §1 template reader + record/field split · change-id graph layout · refresh/debounce. <span style="color:#565f89">Done = renders any repo &amp; survives a mid-session rewrite.</span></div>
+      </div>
+      <div style="background:#1a1b26; border:1px solid #2a2e42; border-left:3px solid #7aa2f7; border-radius:8px; padding:16px 20px">
+        <div style="font:700 12px 'JetBrains Mono',monospace; color:#7aa2f7; margin-bottom:6px">P1 · SEE + NAME</div>
+        <div style="font-size:13px; line-height:1.6; color:#a9b1d6">status/log home with foldable files→hunks tree · describe buffer · new · commit · bare <span style="font-family:'JetBrains Mono',monospace">u</span>. <span style="color:#565f89">Done = navigate, describe, start changes, one-key undo.</span></div>
+      </div>
+      <div style="background:#1a1b26; border:1px solid #3753a6; border-left:3px solid #bb9af7; border-radius:8px; padding:16px 20px">
+        <div style="font:700 12px 'JetBrains Mono',monospace; color:#bb9af7; margin-bottom:6px">P2 · ROUTE ★ — THE DIFF-EDITOR</div>
+        <div style="font-size:13px; line-height:1.6; color:#a9b1d6">the §3 launcher + RPC handshake · hunk-selection buffer · $right write-back · the four modes (split/squash-i/diffedit/restore) · edge cases. <span style="color:#565f89">Done = split @ by selecting hunks, in your own buffer, no git-shim.</span></div>
+      </div>
+      <div style="background:#1a1b26; border:1px solid #2a2e42; border-left:3px solid #bb9af7; border-radius:8px; padding:16px 20px">
+        <div style="font:700 12px 'JetBrains Mono',monospace; color:#bb9af7; margin-bottom:6px">P3 · ROUTE + TRUST — absorb &amp; the time machine</div>
+        <div style="font-size:13px; line-height:1.6; color:#a9b1d6">absorb preview + run · squash (s / S / m→s) · op-log buffer + restore + evolog. <span style="color:#565f89">Done = absorb a sprawling diff, watch it in the op-log, undo it all. Ships the demo.</span></div>
+      </div>
+      <div style="background:#1a1b26; border:1px solid #2a2e42; border-left:3px solid #2bb3a3; border-radius:8px; padding:16px 20px">
+        <div style="font:700 12px 'JetBrains Mono',monospace; color:#2bb3a3; margin-bottom:6px">P6 (narrow) · THE GRAMMAR + SUPPORTING</div>
+        <div style="font-size:13px; line-height:1.6; color:#a9b1d6">which-key over the §2 keymap · counts + dot-repeat · statusline context · then the supporting cast (rebase gesture, bookmark, push/fetch). <span style="color:#565f89">Done = the loop is discoverable from home row and curated work reaches a remote.</span></div>
+      </div>
+    </div>
+    <div style="margin-top:24px; padding:20px 24px; background:#11121a; border:1px solid #2a2e42; border-radius:9px; font-size:14px; line-height:1.6; color:#9aa3b8">
+      <span style="font:700 11px 'JetBrains Mono',monospace; letter-spacing:.1em; color:#bb9af7">SHIP GATE</span> &nbsp; v1 is <b style="color:#e6e3f0">P0 → P3</b>. At that point curate does one thing better than anything else in the ecosystem: <b style="color:#fff">move changes into the right commit.</b> P6 and the supporting cast make it pleasant; they don't gate the identity. Everything else on the design board is a later chapter.
+    </div>
+  </div>
+
+  <div style="padding:50px 0 0; text-align:center; font:500 12px 'JetBrains Mono',monospace; color:#3a3f58">curate.nvim · v1 core-loop spec · companion to the design board</div>
+
+</div>
+</div>
+</x-dc>
+</body>
+</html>

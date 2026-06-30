@@ -46,6 +46,28 @@ With [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 Then `:Curate` (or `:Curate status`) opens the home. Run `:checkhealth curate` to verify jj, the RPC server, and the diff-editor shim.
 
+## Highlights (inherits your colorscheme)
+
+curate defines its highlight groups as `default` links to standard groups, so it
+adopts whatever colorscheme you run — Catppuccin, Tokyo Night, gruvbox, etc. —
+with no extra config, and re-links automatically on `:colorscheme`. Diff and
+state text (added/removed/conflict/selected) links to the **foreground** groups
+`Added` / `Removed` / `DiagnosticError`, so it stays legible under themes that
+make `DiffAdd`/`DiffDelete` background-only.
+
+Override any group to taste — `default = true` means your definition always wins:
+
+```lua
+vim.api.nvim_set_hl(0, "CurateChangeId", { fg = "#f5c2e7", bold = true })
+vim.api.nvim_set_hl(0, "CurateCurrent", { link = "Statement" })
+```
+
+Groups: `CurateChangeId` `CurateCommitId` `CurateAuthor` `CurateAgo`
+`CurateSubject` `CurateCurrent` `CurateImmutable` `CurateConflict`
+`CurateDivergent` `CurateEmpty` `CurateFile` `CurateHunkHeader` `CurateAdded`
+`CurateRemoved` `CurateContext` `CurateSelected` `CurateDeselected`
+`CurateRebaseDest` `CurateOpCurrent` `CurateOpId` `CurateHint` `CurateGraph`.
+
 ## Keymap (the contract)
 
 Lower-case = safe · **UPPER-case = rewrites history**. `.` repeats the last rewriting gesture; counts apply.

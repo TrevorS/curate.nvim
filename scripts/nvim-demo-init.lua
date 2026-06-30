@@ -8,6 +8,13 @@ vim.o.termguicolors = true
 vim.o.number = false
 vim.o.laststatus = 0
 vim.o.cmdheight = 0
-vim.cmd("colorscheme habamax") -- ships with nvim; dark, close enough to Tokyo Night for a demo
+
+-- Theme: honor CURATE_COLORSCHEME (e.g. "catppuccin" with mocha), else fall back
+-- to habamax which ships with nvim. curate links its groups to the colorscheme,
+-- so any dark theme works — this just makes demos/screenshots reproducible.
+local scheme = vim.env.CURATE_COLORSCHEME or "habamax"
+if not pcall(vim.cmd.colorscheme, scheme) then
+  vim.cmd.colorscheme("habamax")
+end
 
 require("curate").setup({})

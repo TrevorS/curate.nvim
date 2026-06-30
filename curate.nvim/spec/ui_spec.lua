@@ -3,6 +3,7 @@
 local render = require("curate.ui.render")
 local tree = require("curate.ui.tree")
 local View = require("curate.ui.view")
+local highlights = require("curate.ui.highlights")
 
 describe("render.row builder", function()
   it("tracks byte columns for spans", function()
@@ -45,6 +46,47 @@ describe("tree", function()
     local t2 = tree.new({ file("a.lua", 2) }, t) -- carry fold state
     assert.is_true(t2:is_folded("a.lua"))
   end)
+end)
+
+describe("highlights", function()
+  -- Resolve a group through its link chain to a concrete definition.
+  local function resolved(group)
+    return vim.api.nvim_get_hl(0, { name = group, link = false })
+  end
+
+  it("links every painted group so it inherits the colorscheme", function()
+    highlights.setup()
+    -- A group is wired iff, after following links, it has a fg/bg/reverse.
+    for _, g in ipairs({
+      "CurateChangeId",
+      "CurateSubject",
+      "CurateCurrent",
+      "CurateFile",
+      "CurateHunkHeader",
+      "CurateGraph",
+      "CurateHint",
+      "CurateAgo",
+    }) do
+      local h = resolved(g)
+      assert.is_true(h.fg ~= nil or h.bg ~= nil or h.reverse == true, g .. " has no color")
+    end
+  end)
+
+  it(
+    "gives diff/state TEXT groups a foreground even when DiffAdd/DiffDelete are bg-only",
+    function()
+      -- Modern colorschemes (catppuccin, tokyonight, …) define DiffAdd/DiffDelete
+      -- as background-only. These curate groups are painted on text spans, so they
+      -- must resolve to a *foreground* color regardless. Regression guard: linking
+      -- them back to DiffAdd/DiffDelete would fail this under such a theme.
+      vim.api.nvim_set_hl(0, "DiffAdd", { bg = "#003300" })
+      vim.api.nvim_set_hl(0, "DiffDelete", { bg = "#330000" })
+      highlights.setup()
+      for _, g in ipairs({ "CurateAdded", "CurateRemoved", "CurateConflict", "CurateSelected" }) do
+        assert.is_truthy(resolved(g).fg, g .. " must resolve to a foreground color")
+      end
+    end
+  )
 end)
 
 describe("View base", function()

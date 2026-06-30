@@ -10,6 +10,27 @@ local diffeditor = require("curate.views.diffeditor")
 
 local M = {}
 
+--- Entry the shim calls for `jj resolve` (ui.merge-editor). `req_path` is a
+--- 6-line file: base, left, right, output, result, mode. Opens the 3-way merge
+--- buffer and returns immediately (does not block).
+---@param req_path string
+---@return string
+function M.enter_merge(req_path)
+  local ok, lines = pcall(vim.fn.readfile, req_path)
+  if not ok or #lines < 5 then
+    return "err: bad request"
+  end
+  local base, left, right, output, result, mode =
+    lines[1], lines[2], lines[3], lines[4], lines[5], lines[6] or "merge"
+
+  vim.schedule(function()
+    local mergeeditor = require("curate.views.mergeeditor")
+    local ed = mergeeditor.new(base, left, right, output, result, mode)
+    ed:open()
+  end)
+  return "ok"
+end
+
 --- Entry the shim calls. `req_path` is a 4-line file: left, right, result, mode.
 --- Returns "ok" synchronously after opening the buffer (does not block).
 ---@param req_path string

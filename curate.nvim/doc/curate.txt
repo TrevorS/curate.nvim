@@ -64,18 +64,32 @@ Home / log buffer ~
     A      absorb working copy             c   commit (describe + new)
     s      squash into parent / mark       S   squash interactively (hunks)
     x      split interactively (hunks)     =   restore from parent
-    m      mark target                     r   rebase onto cursor
-    b      bookmark menu                   gf  fetch      gp  push
-    o      op-log                          u   undo       L   evolog
+    m      mark target                     r   rebase transient
+    R      resolve conflicts (3-way)       b   bookmark menu
+    f      sync menu (fetch/push)          e   revset workbench
+    Z      power menu                      L   evolog
+    o      op-log                          u   undo
     g      refresh    $  process buffer    ?   cheatsheet q  close
 
 Diff-editor buffer ~
     <space>  toggle hunk    a  toggle file   A  toggle all
     [c ]c    prev/next hunk <CR> confirm     q  abort
 
+Merge-editor buffer (3-way) ~
+    l  left   r  right   L  left+right   R  right+left   b  base
+    [c ]c  prev/next conflict   <CR> apply (all chosen)  q  abort
+
 Op-log buffer ~
     <CR>  restore to op (append-only)   =  diff this op
     g- g+ undo/redo walk                L  evolog        u  undo
+
+Revset workbench ~
+    Line 1 is an editable revset; the log recomputes live below as you type.
+    <CR>  jump to result (jj edit)      q  close
+
+Annotate / blame ~
+    Gutter (change-id + age) scroll-bound to the source file.
+    <CR>  jump to the change that wrote the line     q  close
 
 ==============================================================================
 6. THE DIFF-EDITOR                                            *curate-diffeditor*
@@ -85,6 +99,11 @@ $left (before) and $right (after, writable) and blocks on a wait-shim. The
 shim asks the running nvim to open the hunk buffer, then parks. On <CR> curate
 rebuilds each $right file from only the selected hunks; jj records the diff.
 On q it aborts and jj cancels. No temp git repo. See bin/curate-diff-shim.
+
+The same handshake backs the merge-editor: R (resolve) registers curate as
+jj's ui.merge-editor. jj passes $base/$left/$right (read-only) and an empty
+$output; the 3-way buffer lets you pick a side per conflict and writes the
+resolution into $output. One RPC mechanism, two editors. |curate-keymaps|
 
 ==============================================================================
 7. HEALTH                                                        *curate-health*

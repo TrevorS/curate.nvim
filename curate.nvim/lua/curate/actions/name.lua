@@ -26,6 +26,16 @@ function M.edit_here()
   util.mutate(jj, { "edit", id }, "editing " .. id:sub(1, 8))
 end
 
+--- Point @ at a specific change-id (jj edit). Used by surfaces that resolve the
+--- target themselves (e.g. the revset workbench) rather than from the cursor.
+---@param id string
+function M.edit_target(id)
+  if not id or id == "" then
+    return
+  end
+  util.mutate(jj, { "edit", id }, "editing " .. id:sub(1, 8))
+end
+
 --- n — new change atop @ (or atop the change under the cursor).
 function M.new()
   local id = util.cursor_change_id()

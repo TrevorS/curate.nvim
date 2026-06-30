@@ -80,29 +80,39 @@ how to run a gate.
 
 `make test` → luacheck 0 warnings, 31 busted + e2e pass; `make check` clean.
 
+### Post-v1 — **P4 · P5 · P7** ✅ (all green)
+
+`make test` → luacheck 0 warnings, **43 busted + 2 e2e** pass; `make check` clean.
+The full roadmap is now shipped; what remains is explicitly out-of-scope (below).
+
 ---
 
-## ◻ P4 · Reshape (post-v1)
+## ✅ P4 · Reshape
 
-- **Delivers:** richer rebase transient (insert-before/after), the **merge-editor**
-  protocol (3-way conflict resolution reusing the diff-editor RPC), `R` resolve.
+- **Delivers:** richer rebase transient (onto / -r / -b / insert-before/after), the
+  **merge-editor** protocol (3-way conflict resolution reusing the diff-editor RPC),
+  `R` resolve.
 - **Gated on:** P2 (reuses the RPC handshake + hunk buffer).
-- **GATE (planned):** e2e drives `jj resolve` through curate as `ui.merge-editor`;
-  a conflicted change resolves to clean in-buffer; screenshot.
+- **GATE:** e2e drives `jj resolve` through curate as `ui.merge-editor`; a conflicted
+  change resolves to the chosen side in-buffer, abort leaves it; `merge3_spec` proves
+  the diff3 engine. **→ met (5 unit + 2 e2e + screenshot).**
 
-## ◻ P5 · Sync (post-v1)
+## ✅ P5 · Sync
 
-- **Delivers:** full bookmark lifecycle (track/forget), push `--change`, fetch all
-  remotes, a sync transient.
+- **Delivers:** full bookmark lifecycle (set/tug/delete/forget/track/untrack/list),
+  push `--change`, push `--all`, fetch all remotes, a sync transient (`f`).
 - **Gated on:** P6 supporting stubs.
-- **GATE (planned):** integration against a local bare remote; push/fetch/tug
-  round-trip.
+- **GATE:** `sync_spec` against a local bare remote — push-change publishes a `push-*`
+  ref, a second clone fetches it back, tug advances a bookmark. **→ met (3 tests).**
 
-## ◻ P7 · Inspect + power surface (post-v1)
+## ✅ P7 · Inspect + power surface
 
-- **Delivers:** revset workbench (live-recomputing query buffer), annotate/blame,
-  the reserved-key power surface (`workspace`/`fix`/`duplicate`/`parallelize`).
+- **Delivers:** revset workbench (live-recomputing query buffer), annotate/blame
+  (scroll-bound gutter), the reserved-key power surface `Z`
+  (`duplicate`/`parallelize`/`fix`/`annotate`/`workspace`).
 - **Gated on:** P0 (revset typing), P1 (log).
-- **GATE (planned):** revset edits recompute the log live; annotate scroll-binds.
+- **GATE:** `inspect_spec` — the workbench recomputes live (`@`→1, `all()`→every) and
+  tolerates bad queries; annotate parses + aligns the gutter and opens scroll-bound to
+  the source. **→ met (4 tests + screenshot).**
 
 > The ambient gutter layer is explicitly **not** a phase — defer to vcsigns.

@@ -32,7 +32,9 @@ function M.mark()
   vim.notify("curate: marked " .. t.id:sub(1, 8), vim.log.levels.INFO)
 end
 
---- r — rebase the marked source (or @) onto the change under the cursor.
+--- r — open the rebase transient: source = marked change (or @), destination =
+--- the change under the cursor. jj has no rebase-todo, so each entry is a
+--- distinct primitive (onto / just-this-rev / whole-branch / insert around).
 function M.rebase()
   local t, view = util.cursor_target()
   local dest = t and t.id
@@ -40,19 +42,70 @@ function M.rebase()
     return
   end
   local source = M._mark or "@"
-  util.guard_immutable(t, "rebase onto", function()
-    util.mutate(jj, { "rebase", "-s", source, "-d", dest }, "rebased " .. source:sub(1, 8))
-    M._mark = nil
-    if view then
-      decor.set_dest(view.buf, nil)
-    end
-  end)
+
+  local function run(args, label)
+    util.guard_immutable(t, "rebase", function()
+      util.mutate(jj, args, label)
+      M._mark = nil
+      if view then
+        decor.set_dest(view.buf, nil)
+      end
+    end)
+  end
+
+  local s, d = source:sub(1, 8), dest:sub(1, 8)
+  require("curate.ui.transient").open({
+    title = ("rebase  %s → %s"):format(s, d),
+    items = {
+      {
+        key = "d",
+        label = ("onto  (-s %s -d %s, with descendants)"):format(s, d),
+        run = function()
+          run({ "rebase", "-s", source, "-d", dest }, "rebased " .. s .. " onto " .. d)
+        end,
+      },
+      {
+        key = "r",
+        label = ("only this revision  (-r %s -d %s)"):format(s, d),
+        run = function()
+          run({ "rebase", "-r", source, "-d", dest }, "rebased " .. s .. " (rev only)")
+        end,
+      },
+      {
+        key = "b",
+        label = ("whole branch  (-b %s -d %s)"):format(s, d),
+        run = function()
+          run({ "rebase", "-b", source, "-d", dest }, "rebased branch of " .. s)
+        end,
+      },
+      {
+        key = "A",
+        label = ("insert after  (--insert-after %s)"):format(d),
+        run = function()
+          run(
+            { "rebase", "-s", source, "--insert-after", dest },
+            "inserted " .. s .. " after " .. d
+          )
+        end,
+      },
+      {
+        key = "B",
+        label = ("insert before  (--insert-before %s)"):format(d),
+        run = function()
+          run(
+            { "rebase", "-s", source, "--insert-before", dest },
+            "inserted " .. s .. " before " .. d
+          )
+        end,
+      },
+    },
+  })
 end
 
---- R — resolve conflicts in the change under the cursor via the merge editor.
+--- R — resolve conflicts in the change under the cursor, 3-way, via the curate
+--- merge-editor. Delegates to ROUTE, which owns the merge-editor RPC handshake.
 function M.resolve()
-  -- v1: drive jj's resolve; the interactive 3-way editor is a P4 refinement.
-  util.mutate(jj, { "resolve" }, "resolve")
+  require("curate.actions.route").resolve()
 end
 
 return M

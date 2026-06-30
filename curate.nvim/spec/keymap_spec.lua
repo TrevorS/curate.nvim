@@ -14,24 +14,21 @@ describe("keymap registry", function()
     end
   end)
 
-  it("the actions implemented through P2 resolve to real fns", function()
-    local must = {
-      "name.new",
-      "name.describe",
-      "name.commit",
-      "route.split_interactive",
-      "route.squash_interactive",
-      "route.squash",
-      "route.restore",
-      "trust.undo",
-      "trust.oplog",
-      "reshape.mark",
-      "reshape.rebase",
-    }
-    for _, action in ipairs(must) do
-      local mod, fn = action:match("^([%w_]+)%.([%w_]+)$")
-      local m = require("curate.actions." .. mod)
-      assert.equals("function", type(m[fn]), "missing: " .. action)
+  it("every registered action resolves to a real fn (view.* are built-ins)", function()
+    -- The full roadmap is shipped, so every non-special action string in the
+    -- registry must point at a live actions/ function. Catches typo'd entries.
+    local seen = {}
+    for _, list in pairs(keymap.maps) do
+      for _, entry in ipairs(list) do
+        local action = entry[2]
+        if not action:match("^view%.") and not seen[action] then
+          seen[action] = true
+          local mod, fn = action:match("^([%w_]+)%.([%w_]+)$")
+          local ok, m = pcall(require, "curate.actions." .. mod)
+          assert.is_true(ok, "module must load: curate.actions." .. mod)
+          assert.equals("function", type(m[fn]), "missing fn: " .. action)
+        end
+      end
     end
   end)
 

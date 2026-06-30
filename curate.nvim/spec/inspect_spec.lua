@@ -64,6 +64,34 @@ describe("P7 inspect (integration)", function()
     v:close()
   end)
 
+  it("recompute is a no-op for an unchanged query (no busy-loop requery)", function()
+    local jj = require("curate.jj")
+    local rv = require("curate.views.revset")
+    local v = rv.open()
+    v:set_query("@")
+    v:recompute()
+    assert.is_true(wait_for(function()
+      return #v.changes == 1
+    end))
+
+    -- Count jj.log calls; an unchanged recompute (what the render-triggered
+    -- watcher does) must not fire another query.
+    local calls = 0
+    local orig = jj.log
+    jj.log = function(...)
+      calls = calls + 1
+      return orig(...)
+    end
+    v:recompute() -- same query → guarded no-op
+    v:recompute()
+    assert.are.equal(0, calls, "unchanged recompute must not re-run jj.log")
+    -- force=true bypasses the guard
+    v:recompute(true)
+    assert.are.equal(1, calls, "forced recompute should re-run jj.log")
+    jj.log = orig
+    v:close()
+  end)
+
   it("annotate parses blame and the gutter aligns per line", function()
     local annotate = require("curate.views.annotate")
     local US = "\31"

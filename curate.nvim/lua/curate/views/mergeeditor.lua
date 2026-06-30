@@ -126,12 +126,15 @@ function MergeEditor:render()
         si
       )
       local function block(label, lines, hl, key)
-        push(render.row():add("│ " .. key .. " " .. label, "CurateHint"):done(), si)
+        local tag = #lines == 0 and " (empty)" or ""
+        push(render.row():add("│ " .. key .. " " .. label .. tag, "CurateHint"):done(), si)
         for _, l in ipairs(lines) do
           push(render.row():add("│   " .. l, hl):done(), si)
         end
       end
+      -- diff3 order: left (ours) · base (ancestor) · right (theirs).
       block("left", s.left, "CurateAdded", "l")
+      block("base", s.base, "CurateContext", "b")
       block("right", s.right, "CurateRemoved", "r")
       push(render.row():add("└─", "CurateHunkHeader"):done(), si)
     end

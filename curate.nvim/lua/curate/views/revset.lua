@@ -80,14 +80,26 @@ function Revset:set_query(q)
 end
 
 --- Run the current query and re-render the results below line 1.
-function Revset:recompute()
+--- Our own render writes buffer lines, which re-fires the on_lines watcher;
+--- the last-query guard makes that self-trigger a no-op so we don't busy-loop
+--- jj invocations. Pass force=true to re-run an unchanged query on demand.
+---@param force boolean|nil
+function Revset:recompute(force)
   local q = self:query()
+  if not force and q == self._last_query then
+    return
+  end
+  self._last_query = q
+  -- Stamp each query; ignore any response that a newer query has superseded, so
+  -- fast typing can't let an older jj.log result clobber the current one.
+  self._gen = (self._gen or 0) + 1
+  local gen = self._gen
   if q == "" then
     self:render_results({})
     return
   end
   jj.log(q, function(changes, err)
-    if not vim.api.nvim_buf_is_valid(self.buf) then
+    if gen ~= self._gen or not vim.api.nvim_buf_is_valid(self.buf) then
       return
     end
     self.changes = changes
@@ -193,13 +205,13 @@ function Revset:map()
       fn(self)
     end, { buffer = self.buf, nowait = true, silent = true })
   end
-  -- <CR> on a result jumps to it in the log; on the query line, just recompute.
+  -- <CR> on a result jumps to it in the log; on the query line, force a re-run.
   bind("<CR>", function(s)
     local t = s:target()
     if t then
       require("curate.actions.name").edit_target(t.id)
     else
-      s:recompute()
+      s:recompute(true)
     end
   end)
   bind("q", Revset.close)

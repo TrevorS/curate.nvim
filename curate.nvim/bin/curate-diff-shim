@@ -8,11 +8,12 @@
 # a result file we poll. This is the nvr-style remote-wait that backs $GIT_EDITOR.
 #
 # Env in:  CURATE_SERVER  nvim servername / socket (v:servername)
-#          CURATE_MODE    split | squash-i | diffedit | restore
+#          CURATE_MODE    split | squash-i | diffedit | restore | merge
+#
+# Diff modes are invoked by jj as:  shim <left> <right>           (edit-args)
+# The merge mode (jj resolve) is:   shim <base> <left> <right> <output>
 set -u
 
-LEFT="${1:?left tree}"
-RIGHT="${2:?right tree}"
 MODE="${CURATE_MODE:-split}"
 
 if [ -z "${CURATE_SERVER:-}" ]; then
@@ -30,12 +31,21 @@ RESULT="$(mktemp "${TMPDIR:-/tmp}/curate-res.XXXXXX")"
 cleanup() { rm -f "$REQ" "$RESULT"; }
 trap cleanup EXIT INT TERM
 
-# 4-line request the server reads: left, right, result, mode.
-printf '%s\n%s\n%s\n%s\n' "$LEFT" "$RIGHT" "$RESULT" "$MODE" > "$REQ"
+if [ "$MODE" = "merge" ]; then
+  BASE="${1:?base}"; LEFT="${2:?left}"; RIGHT="${3:?right}"; OUTPUT="${4:?output}"
+  RPC="enter_merge"
+  # 6-line request: base, left, right, output, result, mode.
+  printf '%s\n%s\n%s\n%s\n%s\n%s\n' "$BASE" "$LEFT" "$RIGHT" "$OUTPUT" "$RESULT" "$MODE" > "$REQ"
+else
+  LEFT="${1:?left tree}"; RIGHT="${2:?right tree}"
+  RPC="enter_file"
+  # 4-line request: left, right, result, mode.
+  printf '%s\n%s\n%s\n%s\n' "$LEFT" "$RIGHT" "$RESULT" "$MODE" > "$REQ"
+fi
 
-# Tell the running nvim to open the hunk buffer. Returns immediately ("ok").
+# Tell the running nvim to open the editor buffer. Returns immediately ("ok").
 if ! nvim --server "$CURATE_SERVER" \
-      --remote-expr "luaeval('require(\"curate.diffeditor.rpc\").enter_file(\"$REQ\")')" \
+      --remote-expr "luaeval('require(\"curate.diffeditor.rpc\").$RPC(\"$REQ\")')" \
       >/dev/null 2>&1; then
   echo "curate-diff-shim: could not reach nvim server $CURATE_SERVER" >&2
   exit 1

@@ -49,6 +49,25 @@ local function diff_editor_config(shim)
   }
 end
 
+--- Build the --config flags that point jj's merge-editor (jj resolve) at our
+--- shim. Same tool program, different arg contract: base/left/right/output.
+---@param shim string
+---@return string[]
+local function merge_editor_config(shim)
+  local name = config.options.diff_editor_name or "curate"
+  return {
+    "--config",
+    "ui.merge-editor=" .. name,
+    "--config",
+    ("merge-tools.%s.program=%s"):format(name, shim),
+    "--config",
+    ('merge-tools.%s.merge-args=["$base","$left","$right","$output"]'):format(name),
+    -- We write resolved content (no jj conflict markers) into $output.
+    "--config",
+    ("merge-tools.%s.merge-tool-edits-conflict-markers=false"):format(name),
+  }
+end
+
 --- Launch an interactive jj command through the curate diff-editor.
 ---@param base_args string[]   e.g. { "split", "-r", "@" } or { "squash", "-i" }
 ---@param mode string          split | squash-i | diffedit | restore
@@ -88,6 +107,32 @@ end
 --- = (interactive) — restore selected hunks from the parent (diffedit-style).
 function M.restore_interactive()
   launch({ "diffedit", "-r", "@" }, "diffedit")
+end
+
+--- R — resolve conflicts in the change under the cursor (or @) interactively,
+--- 3-way, through the curate merge-editor. jj invokes the tool once per
+--- conflicted file; each opens its own merge buffer in sequence.
+function M.resolve()
+  local shim = shim_path()
+  if not shim then
+    vim.notify("curate: merge-editor shim not found on runtimepath", vim.log.levels.ERROR)
+    return
+  end
+  local id = util.cursor_change_id() or "@"
+  local server = ensure_server()
+  local args = vim.list_extend({ "resolve", "-r", id }, merge_editor_config(shim))
+  jj.runner.spawn(args, {
+    cwd = jj.cwd(),
+    env = { CURATE_SERVER = server, CURATE_MODE = "merge" },
+  }, function(r)
+    if r.code ~= 0 and r.stderr and r.stderr ~= "" then
+      local low = r.stderr:lower()
+      if not (low:find("cancel") or low:find("no conflicts")) then
+        vim.notify("curate: " .. r.stderr, vim.log.levels.WARN)
+      end
+    end
+    util.refresh_all()
+  end)
 end
 
 -- ── absorb ──

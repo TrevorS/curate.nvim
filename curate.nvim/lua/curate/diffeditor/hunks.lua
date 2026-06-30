@@ -52,6 +52,10 @@ local function lcs_pairs(a, b)
   return pairs_out
 end
 
+-- Exposed for the 3-way merge engine (merge3), which anchors on base lines
+-- common to all three inputs. Same matching the diff hunks are built from.
+M.lcs_pairs = lcs_pairs
+
 --- Compute the hunks turning `old` into `new`.
 ---@param old string[]
 ---@param new string[]

@@ -76,9 +76,12 @@ if ! have jj; then
   JJ_TAG="$(curl -fsSL -o /dev/null -w '%{url_effective}' \
             https://github.com/jj-vcs/jj/releases/latest 2>/dev/null | grep -oE 'v[0-9.]+$')"
   if [ -n "${JJ_TAG:-}" ]; then
+    rm -rf /tmp/jj-extract && mkdir -p /tmp/jj-extract
     fetch "https://github.com/jj-vcs/jj/releases/download/${JJ_TAG}/jj-${JJ_TAG}-x86_64-unknown-linux-musl.tar.gz" /tmp/jj.tar.gz \
-      && tar -C /tmp -xzf /tmp/jj.tar.gz jj \
-      && $SUDO mv /tmp/jj /usr/local/bin/jj && $SUDO chmod +x /usr/local/bin/jj \
+      && tar -C /tmp/jj-extract -xzf /tmp/jj.tar.gz \
+      && JJ_BIN="$(find /tmp/jj-extract -name jj -type f | head -1)" \
+      && [ -n "$JJ_BIN" ] \
+      && $SUDO mv "$JJ_BIN" /usr/local/bin/jj && $SUDO chmod +x /usr/local/bin/jj \
       && log "  $(jj --version)" \
       || warn "jj install failed"
   else

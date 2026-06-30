@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref so pushes don't pile up.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: lint + test gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Cache the luarocks --local tree (busted + nlua) across runs.
+      - name: Cache luarocks tree
+        uses: actions/cache@v4
+        with:
+          path: ~/.luarocks
+          key: luarocks-${{ runner.os }}-busted-nlua-v1
+
+      # Provision nvim, jj, busted+nlua, luacheck via the same script the
+      # SessionStart hook uses. Screenshot tools (vhs/ttyd/chromium) are not
+      # present here; the script degrades them to warnings and still exits 0.
+      - name: Bootstrap dev environment
+        run: bash scripts/bootstrap-dev-env.sh
+
+      # The single source of truth for the gate: luacheck + busted + e2e.
+      - name: Run gate (luacheck + busted + e2e)
+        run: bash scripts/test.sh
+
+      # Formatting is enforced separately so a format-only failure is legible.
+      - name: stylua --check
+        run: |
+          export PATH="/usr/local/bin:$PATH"
+          stylua --check curate.nvim/lua curate.nvim/plugin curate.nvim/spec

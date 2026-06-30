@@ -11,6 +11,7 @@ This repo holds **curate.nvim**, a focused Jujutsu (jj) frontend for Neovim, bui
 | [`curate.nvim/`](curate.nvim/) | **the plugin** — Lua source, tests, docs (`make test`) |
 | [`scripts/`](scripts/) | dev-env bootstrap, test runner, VHS screenshot tooling |
 | [`screenshots/`](screenshots/) | VHS captures of the real plugin (status, diff-editor, op-log) |
+| [`docs/SPEC.md`](docs/SPEC.md) · [`PLAN.md`](docs/PLAN.md) · [`WORKFLOW.md`](docs/WORKFLOW.md) | distilled spec, phased plan with gates, gated execution workflow |
 | [`project/`](project/) | the original design documents (HTML prototypes) |
 | [`docs/DESIGN_HANDOFF.md`](docs/DESIGN_HANDOFF.md) | the original Claude Design handoff instructions |
 | [`chats/`](chats/) | the design conversation that produced the spec |

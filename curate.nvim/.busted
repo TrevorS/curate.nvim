@@ -1,0 +1,11 @@
+-- busted configuration. Run via: busted --lua=nlua  (so the real vim API is live)
+return {
+  _all = {
+    lpath = "lua/?.lua;lua/?/init.lua",
+    ["recursive"] = true,
+  },
+  default = {
+    ROOT = { "spec" },
+    pattern = "_spec",
+  },
+}

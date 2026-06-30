@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/scripts/bootstrap-dev-env.sh\" >/tmp/curate-bootstrap.log 2>&1 || echo 'curate dev-env bootstrap had warnings; see /tmp/curate-bootstrap.log'"
+          }
+        ]
+      }
+    ]
+  }
+}

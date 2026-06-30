@@ -1,0 +1,97 @@
+*curate.txt*  jj's working copy is already a commit; curate makes it the one you meant.
+
+==============================================================================
+CONTENTS                                                       *curate-contents*
+
+  1. Introduction ............ |curate-intro|
+  2. Setup ................... |curate-setup|
+  3. Commands ................ |curate-commands|
+  4. The loop ................ |curate-loop|
+  5. Keymaps ................. |curate-keymaps|
+  6. The diff-editor ......... |curate-diffeditor|
+  7. Health .................. |curate-health|
+
+==============================================================================
+1. INTRODUCTION                                                   *curate-intro*
+
+curate.nvim is a focused Jujutsu (jj) frontend for Neovim. It does one thing
+well: move changes into the right commit. SEE -> ROUTE -> NAME -> TRUST.
+
+Requires Neovim 0.11+ and jj 0.42+ on PATH.
+
+==============================================================================
+2. SETUP                                                          *curate-setup*
+
+>lua
+    require("curate").setup({
+      log_revset = "@ | ancestors(@, 4) | trunk() | bookmarks()",
+      refresh_debounce = 80,
+      window = { split = "right" },     -- or { split = "float" }
+      confirm_immutable = true,
+      diff_editor_name = "curate",
+    })
+<
+                                                              *curate.setup()*
+require("curate").setup({opts})   Apply config, highlights, and keymaps.
+
+==============================================================================
+3. COMMANDS                                                    *curate-commands*
+
+:Curate [view]                                                       *:Curate*
+    Open a curate surface. {view} is one of: status (default), log, oplog,
+    evolog, process. With no argument, opens the status home.
+
+==============================================================================
+4. THE LOOP                                                        *curate-loop*
+
+SEE     status home + log
+ROUTE   absorb (A), squash (s/S), split (x) via the native diff-editor   <- ★
+NAME    describe (d), commit (c), new (n)
+TRUST   op-log (o), undo (u), op restore
+
+ROUTE is the expertise: curate registers as jj's ui.diff-editor so split -i,
+squash -i and diffedit open a native hunk-selection buffer. |curate-diffeditor|
+
+==============================================================================
+5. KEYMAPS                                                      *curate-keymaps*
+
+Lower-case = safe. UPPER-case = rewrites history. `.` repeats the last
+rewriting gesture.
+
+Home / log buffer ~
+    <CR>   edit / expand under cursor      n   new change
+    <Tab>  cycle fold                      d   describe
+    A      absorb working copy             c   commit (describe + new)
+    s      squash into parent / mark       S   squash interactively (hunks)
+    x      split interactively (hunks)     =   restore from parent
+    m      mark target                     r   rebase onto cursor
+    b      bookmark menu                   gf  fetch      gp  push
+    o      op-log                          u   undo       L   evolog
+    g      refresh    $  process buffer    ?   cheatsheet q  close
+
+Diff-editor buffer ~
+    <space>  toggle hunk    a  toggle file   A  toggle all
+    [c ]c    prev/next hunk <CR> confirm     q  abort
+
+Op-log buffer ~
+    <CR>  restore to op (append-only)   =  diff this op
+    g- g+ undo/redo walk                L  evolog        u  undo
+
+==============================================================================
+6. THE DIFF-EDITOR                                            *curate-diffeditor*
+
+Pressing x or S launches jj with curate as the diff-editor. jj materialises
+$left (before) and $right (after, writable) and blocks on a wait-shim. The
+shim asks the running nvim to open the hunk buffer, then parks. On <CR> curate
+rebuilds each $right file from only the selected hunks; jj records the diff.
+On q it aborts and jj cancels. No temp git repo. See bin/curate-diff-shim.
+
+==============================================================================
+7. HEALTH                                                        *curate-health*
+
+:checkhealth curate
+    Verifies jj on PATH and its version, the RPC server (servername), the
+    diff-editor shim on the runtimepath, the Neovim version, and optional
+    which-key.nvim.
+
+vim:tw=78:ts=8:ft=help:norl:

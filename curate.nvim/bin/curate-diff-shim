@@ -1,0 +1,59 @@
+#!/usr/bin/env sh
+# curate-diff-shim — the wait-client jj spawns as its diff editor.
+#
+# jj invokes us with: curate-diff-shim <left> <right>   (edit-args=["$left","$right"])
+# and blocks on our exit code. We do NOT open our own editor: we ask the already
+# running nvim (CURATE_SERVER) to open the hunk buffer on these trees, then park
+# until the user confirms/aborts there. The running nvim writes our exit code to
+# a result file we poll. This is the nvr-style remote-wait that backs $GIT_EDITOR.
+#
+# Env in:  CURATE_SERVER  nvim servername / socket (v:servername)
+#          CURATE_MODE    split | squash-i | diffedit | restore
+set -u
+
+LEFT="${1:?left tree}"
+RIGHT="${2:?right tree}"
+MODE="${CURATE_MODE:-split}"
+
+if [ -z "${CURATE_SERVER:-}" ]; then
+  echo "curate-diff-shim: CURATE_SERVER not set; is curate running?" >&2
+  exit 1
+fi
+if ! command -v nvim >/dev/null 2>&1; then
+  echo "curate-diff-shim: nvim not on PATH" >&2
+  exit 1
+fi
+
+REQ="$(mktemp "${TMPDIR:-/tmp}/curate-req.XXXXXX")"
+RESULT="$(mktemp "${TMPDIR:-/tmp}/curate-res.XXXXXX")"
+: > "$RESULT"   # start empty; the editor writes the exit code here
+cleanup() { rm -f "$REQ" "$RESULT"; }
+trap cleanup EXIT INT TERM
+
+# 4-line request the server reads: left, right, result, mode.
+printf '%s\n%s\n%s\n%s\n' "$LEFT" "$RIGHT" "$RESULT" "$MODE" > "$REQ"
+
+# Tell the running nvim to open the hunk buffer. Returns immediately ("ok").
+if ! nvim --server "$CURATE_SERVER" \
+      --remote-expr "luaeval('require(\"curate.diffeditor.rpc\").enter_file(\"$REQ\")')" \
+      >/dev/null 2>&1; then
+  echo "curate-diff-shim: could not reach nvim server $CURATE_SERVER" >&2
+  exit 1
+fi
+
+# Park until the editor writes our exit code (or we time out ~10 min).
+waited=0
+while [ ! -s "$RESULT" ]; do
+  sleep 0.1
+  waited=$((waited + 1))
+  if [ "$waited" -ge 6000 ]; then
+    echo "curate-diff-shim: timed out waiting for the diff editor" >&2
+    exit 1
+  fi
+done
+
+code="$(cat "$RESULT")"
+case "$code" in
+  ''|*[!0-9]*) code=1 ;;   # non-numeric -> treat as abort
+esac
+exit "$code"

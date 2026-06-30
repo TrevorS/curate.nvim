@@ -1,25 +1,47 @@
-# CODING AGENTS: READ THIS FIRST
+# curate.nvim — workspace
 
-This is a **handoff bundle** from Claude Design (claude.ai/design).
+This repo holds **curate.nvim**, a focused Jujutsu (jj) frontend for Neovim, built from a Claude Design handoff bundle.
 
-A user mocked up designs in HTML/CSS/JS using an AI design tool, then exported this bundle so a coding agent can implement the designs for real.
+> jj's working copy is already a commit; **curate** is the one tool for turning it into the commit you meant. SEE → ROUTE → NAME → TRUST, with a native hunk-level diff-editor as the hero.
 
-## What you should do — IMPORTANT
+## Layout
 
-**Read the chat transcripts first.** There are 1 chat transcript(s) in `chats/`. The transcripts show the full back-and-forth between the user and the design assistant — they tell you **what the user actually wants** and **where they landed** after iterating. Don't skip them. The final HTML files are the output, but the chat is where the intent lives.
+| path | what |
+|---|---|
+| [`curate.nvim/`](curate.nvim/) | **the plugin** — Lua source, tests, docs (`make test`) |
+| [`scripts/`](scripts/) | dev-env bootstrap, test runner, VHS screenshot tooling |
+| [`screenshots/`](screenshots/) | VHS captures of the real plugin (status, diff-editor, op-log) |
+| [`project/`](project/) | the original design documents (HTML prototypes) |
+| [`docs/DESIGN_HANDOFF.md`](docs/DESIGN_HANDOFF.md) | the original Claude Design handoff instructions |
+| [`chats/`](chats/) | the design conversation that produced the spec |
 
-**Read `project/curate.nvim Lua Architecture.dc.html` in full.** The user had this file open when they triggered the handoff, so it's almost certainly the primary design they want built. Read it top to bottom — don't skim. Then **follow its imports**: open every file it pulls in (shared components, CSS, scripts) so you understand how the pieces fit together before you start implementing.
+Start with [`curate.nvim/README.md`](curate.nvim/README.md).
 
-**If anything is ambiguous, ask the user to confirm before you start implementing.** It's much cheaper to clarify scope up front than to build the wrong thing.
+## Quick start (development)
 
-## About the design files
+The plugin needs Neovim 0.11+, jj, and a small Lua toolchain. One idempotent script provisions all of it (and is wired as a SessionStart hook for Claude Code on the web):
 
-The design medium is **HTML/CSS/JS** — these are prototypes, not production code. Your job is to **recreate them pixel-perfectly** in whatever technology makes sense for the target codebase (React, Vue, native, whatever fits). Match the visual output; don't copy the prototype's internal structure unless it happens to fit.
+```sh
+bash scripts/bootstrap-dev-env.sh    # nvim, jj, busted+nlua, luacheck, stylua, vhs
+cd curate.nvim && make test          # luacheck + busted (nlua) + e2e diff-editor
+```
 
-**Don't render these files in a browser or take screenshots unless the user asks you to.** Everything you need — dimensions, colors, layout rules — is spelled out in the source. Read the HTML and CSS directly; a screenshot won't tell you anything they don't.
+### Tooling provisioned
 
-## Bundle contents
+| tool | purpose |
+|---|---|
+| Neovim 0.11+ | runtime (the design targets modern nvim APIs) |
+| jj (latest) | the VCS the plugin drives |
+| busted + nlua | tests **inside Neovim's Lua runtime** (real `vim` API) |
+| luacheck / stylua | lint / format |
+| VHS + ttyd + ffmpeg | terminal → PNG/GIF screenshots of the live plugin |
+| tmux | driving nvim headlessly for capture/debug |
 
-- `README.md` — this file
-- `chats/` — conversation transcripts (read these!)
-- `project/` — the `Nvim plugin design for jj` project files (HTML prototypes, assets, components)
+> Docker is intentionally not used: this environment exposes a docker CLI but no
+> reachable daemon, so a reproducible provisioning script is the portable path.
+
+## Design → implementation
+
+The design medium was HTML, but the primary design (`curate.nvim Lua Architecture.dc.html`) is itself a **Lua module-tree sketch** — so "implementing the design" meant building the actual plugin it describes. The module tree, the `vim.system` runner, the template parser, the View base, the extmark render path, and the nvr-style diff-editor handshake all map 1:1 to the design. See `curate.nvim/README.md` for the mapping.
+
+One deviation worth noting: the design's `jj log` template used the `\u{1f}` escape, which jj 0.42 rejects — the implementation uses the verified `\x1f`/`\x1e` byte escapes instead.

@@ -116,3 +116,18 @@ The full roadmap is now shipped; what remains is explicitly out-of-scope (below)
   the source. **→ met (4 tests + screenshot).**
 
 > The ambient gutter layer is explicitly **not** a phase — defer to vcsigns.
+
+---
+
+## ◻ P8 · magit-grade command grammar (planned)
+
+- **Delivers:** the net-new everyday verbs — `abandon` (`k`), `pull`
+  (fetch + rebase), `file untrack` (`K`) — plus a magit-grade polish pass:
+  finished sticky-arg toggles in the transient engine and `commit`/`log`/`push`
+  verb popups, all as rows in the one `keymap.lua` registry.
+- **Gated on:** P5 (sync), P6 (grammar/transient engine).
+- **GATE:** abandon drops a change and reparents its child; pull fetches then
+  rebases onto a moved trunk (bare-remote fixture); untrack removes an ignored
+  path from `jj status`; a `transient_spec` proves an arg toggle flips the argv.
+- **Sketch:** [`P8-command-grammar.md`](P8-command-grammar.md) — the full audit,
+  keymap deltas, and the stacked-PR plan.

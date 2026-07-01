@@ -121,7 +121,7 @@ The full roadmap is now shipped; what remains is explicitly out-of-scope (below)
 
 ## ✅ P8 · magit-grade command grammar
 
-- **Delivers:** the net-new everyday verbs — `abandon` (`k`), `pull`
+- **Delivers:** the net-new everyday verbs — `abandon` (`D`), `pull`
   (fetch + rebase, sync `u`/`U`), `file untrack` (`K`) — plus the finished
   sticky-arg toggles in the transient engine and a `push` verb popup (`P`) with
   a `--allow-new` arg, all rows in the one `keymap.lua` registry. (The

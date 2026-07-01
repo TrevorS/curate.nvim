@@ -20,7 +20,7 @@ Sleep 400ms
 Type "/scratch experiment"
 Enter
 Sleep 500ms
-Type "k"
+Type "D"
 Sleep 1800ms
 Screenshot abandon-after.png
 Sleep 600ms

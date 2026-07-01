@@ -35,11 +35,11 @@ injected languages, and intra-line word emphasis together (Catppuccin Mocha):
 
 ### Command grammar (magit-style)
 
-`k` abandons the change under the cursor (children reparent); `K` untracks an
+`D` abandons (drops) the change under the cursor (children reparent); `K` untracks an
 ignored-but-committed file; the sync menu (`f`) grows a `pull` (fetch + rebase
 onto trunk):
 
-![abandon a change with k](../screenshots/abandon.gif)
+![abandon a change with D](../screenshots/abandon.gif)
 ![untrack a file with K](../screenshots/untrack.gif)
 ![sync menu with pull](../screenshots/sync-menu.png)
 
@@ -127,7 +127,7 @@ Lower-case = safe · **UPPER-case = rewrites history**. `.` repeats the last rew
 | `S` | **squash interactively (hunks)** | `jj squash -i` |
 | `x` | **split interactively (hunks)** | `jj split -i` |
 | `=` | **restore hunk/file from parent** | `jj restore` |
-| `k` | **abandon change** (reparents children; confirm on @) | `jj abandon` |
+| `D` | **abandon (drop) change** (reparents children; confirm on @) | `jj abandon` |
 | `K` | untrack file under cursor (must be ignored) | `jj file untrack` |
 | `m` `r` | mark · **rebase transient** (onto / -r / -b / insert ±) | `jj rebase` |
 | `R` | **resolve conflicts (3-way merge-editor)** | `jj resolve` |

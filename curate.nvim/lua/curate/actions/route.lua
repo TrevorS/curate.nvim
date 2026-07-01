@@ -181,17 +181,20 @@ function M.restore()
   end
 end
 
---- k — abandon the change under the cursor (or @), rebasing descendants onto its
+--- Abandon the change under the cursor (or @), rebasing descendants onto its
 --- parent. Guarded like the other rewrites; abandoning @ is recoverable (jj
---- gives a fresh empty @, `u` undoes it) but surprising, so confirm it.
-function M.abandon()
+--- gives a fresh empty @, `u` undoes it) but surprising, so confirm it. `flags`
+--- are sticky args from the abandon menu (--restore-descendants / …).
+---@param flags string[]|nil
+function M.abandon(flags)
   local t = util.cursor_target()
   local change = t and t.change
   local id = (change and change.id) or "@"
   local is_current = (not change) or change.flags.current
   local function run()
     util.guard_immutable(t, "abandon", function()
-      util.mutate(jj, { "abandon", "-r", id }, "abandoned " .. id:sub(1, 8) .. "  (u to undo)")
+      local args = vim.list_extend({ "abandon", "-r", id }, flags or {})
+      util.mutate(jj, args, "abandoned " .. id:sub(1, 8) .. "  (u to undo)")
     end)
   end
   if is_current then
@@ -203,6 +206,24 @@ function M.abandon()
   else
     run()
   end
+end
+
+--- k — the abandon transient: sticky args over the abandon action. Low-frequency
+--- verb, so the extra keystroke is cheap and the flags are worth surfacing.
+function M.abandon_menu()
+  require("curate.ui.transient").open({
+    title = "abandon",
+    items = {
+      {
+        key = "d",
+        arg = true,
+        flag = "--restore-descendants",
+        label = "restore descendants (don't rebase them)",
+      },
+      { key = "b", arg = true, flag = "--retain-bookmarks", label = "retain bookmarks" },
+      { key = "k", label = "abandon the change", run = M.abandon },
+    },
+  })
 end
 
 return M

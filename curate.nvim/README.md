@@ -51,10 +51,14 @@ show `[=origin]`. They're plumbed through every menu with useful flags:
 - **fetch/pull** (`f`) — `-a` `--all-remotes`
 - **push** (`P`) — `-d` `--dry-run` · `=r` `--remote <name>`
 - **rebase** (`r`) — `-e` `--skip-emptied` · `-k` `--keep-divergent`
+- **abandon** (`k`) — `-d` `--restore-descendants` · `-b` `--retain-bookmarks`
+- **op-log** (`o`, in the op-log view) — `=` `--limit` (value arg; re-renders live)
 
 ![push menu with sticky --dry-run and =remote args](../screenshots/pushmenu.gif)
 ![fetch/pull menu with a sticky --all-remotes arg](../screenshots/fetchpull.gif)
 ![rebase menu with sticky --skip-emptied/--keep-divergent args](../screenshots/rebasemenu.gif)
+![abandon menu with sticky --restore-descendants/--retain-bookmarks args](../screenshots/abandonmenu.gif)
+![op-log options menu with a sticky =limit value arg](../screenshots/oplogmenu.gif)
 
 ## Requirements
 
@@ -134,7 +138,7 @@ Lower-case = safe · **UPPER-case = rewrites history**. `.` repeats the last rew
 | `S` | **squash interactively (hunks)** | `jj squash -i` |
 | `x` | **split interactively (hunks)** | `jj split -i` |
 | `=` | **restore hunk/file from parent** | `jj restore` |
-| `k` | **abandon change** (reparents children; confirm on @) | `jj abandon` |
+| `k` | **abandon menu** (reparents children; sticky `-d` `--restore-descendants` · `-b` `--retain-bookmarks`) | `jj abandon` |
 | `K` | untrack file under cursor (must be ignored) | `jj file untrack` |
 | `m` `r` | mark · **rebase transient** (onto / -r / -b / insert ±; sticky `-e`/`-k`) | `jj rebase` |
 | `R` | **resolve conflicts (3-way merge-editor)** | `jj resolve` |
@@ -158,7 +162,7 @@ Lower-case = safe · **UPPER-case = rewrites history**. `.` repeats the last rew
 
 ### Op-log buffer
 
-`<CR>` restore to op (append-only) · `=` diff this op · `g-` `g+` undo/redo walk · `L` evolog · `u` undo.
+`<CR>` restore to op (append-only) · `=` diff this op · `g-` `g+` undo/redo walk · `L` evolog · `u` undo · `o` options (sticky `=` `--limit`).
 
 ### Revset workbench
 

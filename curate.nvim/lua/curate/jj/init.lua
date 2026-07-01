@@ -50,10 +50,12 @@ function M.working_diff(cb, revset)
   end)
 end
 
---- Op-log query -> Op[].
+--- Op-log query -> Op[]. `extra` appends display flags (e.g. { "--limit", "50" }).
 ---@param cb fun(ops: curate.Op[], err: string|nil)
-function M.oplog(cb)
-  runner.spawn(template.oplog_args(), opts(), function(r)
+---@param extra string[]|nil
+function M.oplog(cb, extra)
+  local args = vim.list_extend(template.oplog_args(), extra or {})
+  runner.spawn(args, opts(), function(r)
     if r.code ~= 0 then
       cb({}, r.stderr)
     else

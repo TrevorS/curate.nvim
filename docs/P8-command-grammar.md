@@ -28,7 +28,7 @@ implementation lands in the follow-up PRs in §6.
 | 4 | **describe** | `describe` | `d` · `name.describe` | `magit-commit` (msg) | ✅ |
 | 5 | **commit** | `commit` | `c` · `name.commit` | `c` commit popup | ⚠ fold into a commit transient (describe / commit / amend@ / new) |
 | 6 | **squash** | `squash [-i]` | `s`,`S` · `route.squash*` | (no direct analog) | ✅ |
-| 7 | **diff** | `diff` | `=` / `<CR>` expand · diff-editor | `d` diff popup | ⚠ a "show diff" that reuses the read model |
+| 7 | **diff** | `diff` | `=` / `<CR>` expand · diff-editor | `d` diff popup | ✅ served by `=`/`<CR>`; **no** `d` popup (`d` = describe here) |
 | 8 | **op log** | `op log` | `o` · `trust.oplog` | `magit-reflog` | ✅ |
 | 9 | **undo** | `undo` | `u` · `trust.undo` | `magit-reset`/reflog | ✅ |
 | 10 | **git push** | `git push` | `f`→push · `sync.push*` | `P` push popup | ⚠ promote to a push transient w/ args |
@@ -57,9 +57,11 @@ parent. It is the "kill this" verb magit spells `k`.
   it moves a change's *contents* to nowhere). Target = change under cursor, or
   `@`.
 - **Safety:** route through `util.guard_immutable(target, "abandon", fn)` — the
-  same confirm gate absorb/squash use — and confirm when abandoning `@` (you'd
-  lose the working-copy change) via `vim.ui.select` yes/no.
-- **jj:** `{ "abandon", "-r", id }`. Descendants reparent automatically.
+  same confirm gate absorb/squash use. Abandoning `@` is *not* data loss (jj
+  hands you a fresh empty `@`, and `u` undoes it), but it's surprising, so still
+  confirm it with a `vim.ui.select` yes/no.
+- **jj:** `{ "abandon", "-r", id }`. Descendants reparent onto the parent(s)
+  automatically.
 
 ### 2.2 `pull` — fetch, then rebase onto the updated remote (⚠ rewrites)
 
@@ -73,8 +75,11 @@ onto the freshly-moved `trunk()`. magit's `F` in one gesture.
   - `U` — **pull --all** = `git fetch --all-remotes` → same rebase.
 - **Module:** `actions/sync.lua` → `M.pull()` chains `jj.run` (fetch) then
   `util.mutate` (rebase), so a fetch failure aborts before any rewrite.
-- **Safety:** the rebase step is history-rewriting → confirm if `@`'s branch
-  touches immutable changes; surface "already up to date" as a soft no-op.
+- **jj:** `{ "git", "fetch" }` then `{ "rebase", "-b", "@", "-d", "trunk()" }`
+  (`-b @` = restack the whole local branch relative to the freshly-moved trunk).
+- **Safety:** the rebase is history-rewriting (`rw`), but jj already refuses to
+  rewrite immutable commits (trunk stays put); when `@` is already on trunk the
+  rebase is a clean "Nothing changed" no-op we report as up-to-date.
 
 ### 2.3 `file untrack` — stop tracking a file
 
@@ -87,10 +92,12 @@ onto the freshly-moved `trunk()`. magit's `F` in one gesture.
 - **Module:** new `actions/files.lua` → `M.untrack()`, reading the file path
   from the status tree node under the cursor (`util.cursor_target()` already
   returns the node; extend it to expose `node.file.path`).
-- **jj:** `{ "file", "untrack", path }`; on the "still tracked because not
-  ignored" error, notify with the `.gitignore` hint rather than a raw stderr.
-- **Companion:** `k` at a file node could offer *track* symmetrically later;
-  out of this sketch to keep the surface minimal.
+- **jj:** `{ "file", "untrack", path }`. jj **requires the path already be
+  ignored** (`.gitignore`/`.git/info/exclude`), else it re-adds it and errors —
+  so on failure we notify with the "add it to .gitignore first" hint rather than
+  a raw stderr.
+- **Companion:** a symmetric *track* could live here later; out of this sketch
+  to keep the surface minimal.
 
 ---
 
@@ -118,11 +125,13 @@ memory.
   `@`) · `n` new. (Collapses today's `c`/`d` into one discoverable popup.)
 - **log (`l`)** → args `--all` `-n <count>` `-r <revset>`; actions: open log,
   open revset workbench. (Today `e` opens the workbench; `l` gives the popup.)
-- **diff (`d` in the diff context)** → this change · `@` vs parent · against a
-  marked change. Reuses `jj/diff.lua` + the read model.
 - **push (`P`)** → args `--all` `--change` `<remote>`; actions: push tracked /
   this-change-as-bookmark / all. (Promotes today's `f`→push items to their own
   magit-style `P` popup with sticky args; `f` sync menu stays.)
+
+> **Not** a diff popup: `d` is `describe` here, and `=`/`<CR>` already show the
+> diff of the change (and its hunks) — magit's `d` popup would only add a key
+> collision for no new capability. Diff stays where it is.
 
 > `rebase` (`r`) and `bookmark` (`b`) are **already** transients — they set the
 > pattern these follow.

@@ -76,13 +76,14 @@ function M.push_all(flags)
   git_push({ "--all" }, flags, "pushed all bookmarks")
 end
 
---- P — the push transient: a sticky `--allow-new` arg over the push actions,
---- the poster child for the transient engine's toggleable flags.
+--- P — the push transient: a sticky `--dry-run` arg over the push actions, the
+--- poster child for the transient engine's toggleable flags. (Pushing a named
+--- bookmark already allows new bookmarks in jj, so there is no `--allow-new`.)
 function M.push_menu()
   transient.open({
     title = "push (git)",
     items = {
-      { key = "n", arg = true, flag = "--allow-new", label = "allow new bookmarks" },
+      { key = "d", arg = true, flag = "--dry-run", label = "dry run (show, don't push)" },
       { key = "p", label = "push tracked bookmarks", run = M.push },
       { key = "c", label = "push this change as a new bookmark", run = M.push_change },
       { key = "P", label = "push all bookmarks", run = M.push_all },

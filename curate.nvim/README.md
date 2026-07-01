@@ -43,11 +43,11 @@ onto trunk):
 ![untrack a file with K](../screenshots/untrack.gif)
 ![sync menu with pull](../screenshots/sync-menu.png)
 
-The transient popups carry magit-style **sticky args** — toggle `-n`
-(`--allow-new`) in the push menu (`P`) and it rides along with whichever push
+The transient popups carry magit-style **sticky args** — toggle `-d`
+(`--dry-run`) in the push menu (`P`) and it rides along with whichever push
 action you pick:
 
-![push menu with a sticky --allow-new arg](../screenshots/pushmenu.gif)
+![push menu with a sticky --dry-run arg](../screenshots/pushmenu.gif)
 
 ## Requirements
 
@@ -133,7 +133,7 @@ Lower-case = safe · **UPPER-case = rewrites history**. `.` repeats the last rew
 | `R` | **resolve conflicts (3-way merge-editor)** | `jj resolve` |
 | `b` | bookmark menu (set/tug/delete/forget/track/list) | `jj bookmark …` |
 | `f` | sync menu (fetch · **pull** = fetch+rebase · push) | `jj git fetch/push` |
-| `P` | push menu (sticky `-n` = `--allow-new`) | `jj git push` |
+| `P` | push menu (sticky `-d` = `--dry-run`) | `jj git push` |
 | `e` | revset workbench (live query) | `jj log -r …` |
 | `Z` | power menu (duplicate/parallelize/fix/annotate/workspace) | `jj duplicate …` |
 | `o` | op-log | `jj op log` |

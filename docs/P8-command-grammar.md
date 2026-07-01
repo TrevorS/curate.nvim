@@ -121,9 +121,10 @@ A `transient.open` spec — a few keys + sticky args — opened from the status/
 home, *wrapping* existing actions; the bare single-key bindings stay for muscle
 memory.
 
-- **push (`P`)** ✅ shipped → sticky arg `-n` (`--allow-new`); actions: push
+- **push (`P`)** ✅ shipped → sticky arg `-d` (`--dry-run`); actions: push
   tracked / this-change-as-bookmark / all. The arg rides along with whichever
   action you pick. `f` (the combined sync menu) stays for the quick path.
+  (jj has no `--allow-new` — pushing a named bookmark already allows new.)
 
 > **Dropped from the sketch:** `commit`/`log` popups. `jj commit`/`describe`
 > and `jj log` (as curate uses them) have no meaningful flags to *toggle*, so a

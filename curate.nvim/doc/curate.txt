@@ -68,7 +68,7 @@ Home / log buffer ~
     k      abandon change                  K   untrack file (must be ignored)
     m      mark target                     r   rebase transient
     R      resolve conflicts (3-way)       b   bookmark menu
-    f      sync menu (fetch/pull/push)     P   push menu (sticky --allow-new)
+    f      sync menu (fetch/pull/push)     P   push menu (sticky --dry-run)
     e      revset workbench                Z   power menu
     L      evolog
     o      op-log                          u   undo

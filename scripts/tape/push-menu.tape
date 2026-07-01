@@ -1,4 +1,4 @@
-# VHS tape: the push transient (P) with a sticky --allow-new arg. Catppuccin
+# VHS tape: the push transient (P) with a sticky --dry-run arg. Catppuccin
 # Mocha; needs a catppuccin/nvim checkout at CURATE_COLORSCHEME_PATH.
 Output pushmenu.gif
 Set Theme "Catppuccin Mocha"
@@ -18,8 +18,8 @@ Type "P"
 Sleep 1200ms
 Screenshot push-menu.png
 Sleep 500ms
-# toggle the sticky --allow-new arg → [ ] becomes [✓]
-Type "n"
+# toggle the sticky --dry-run arg → [ ] becomes [✓]
+Type "d"
 Sleep 1200ms
 Screenshot push-menu-arg.png
 Sleep 800ms

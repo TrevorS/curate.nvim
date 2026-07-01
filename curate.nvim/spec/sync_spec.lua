@@ -79,6 +79,17 @@ describe("P5 sync (integration, bare remote)", function()
     assert.is_not_nil((seen.stdout or ""):find("work"), "clone B should see the 'work' change")
   end)
 
+  it("push accepts and honors the push menu's --dry-run flag", function()
+    -- Guards against a bad sticky-arg flag reaching jj: run the exact argv the
+    -- push menu builds and assert jj accepts it (exit 0) and honors it (no ref).
+    local runner = require("curate.jj.runner")
+    local r = runner.sync({ "git", "push", "--change", "@", "--dry-run" }, { cwd = A, env = env })
+    assert.equals(0, r.code, "--dry-run must be a valid jj flag: " .. (r.stderr or ""))
+    assert.is_truthy((r.stdout .. r.stderr):lower():find("dry"), "should report a dry run")
+    local br = sys({ "git", "--git-dir=" .. remote, "branch", "--list", "push-*" }, root)
+    assert.is_falsy((br.stdout or ""):find("push%-"), "dry run must not create a ref")
+  end)
+
   it("tug moves a bookmark forward to @", function()
     local util = require("curate.actions.util")
     local jj = require("curate.jj")

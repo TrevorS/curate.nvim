@@ -43,15 +43,20 @@ local function highlights_query(lang)
   return query_cache[lang] or nil
 end
 
---- Highlight spans for a single line of code.
----@param code string
+--- Highlight spans for a whole file, parsed as one tree so multi-line
+--- constructs (block strings/comments, and every node's surrounding context)
+--- resolve correctly — this is the "proper", not per-line, path. Multi-line
+--- nodes are split into one span per row they cover. Returns a 1-based row ->
+--- spans map so a caller can project them onto its own rows by line number.
+---@param lines string[]
 ---@param lang string|nil
----@return { [1]:string, [2]:integer, [3]:integer }[]  {group, start_col, end_col} byte cols
-function M.spans(code, lang)
-  if not lang or code == "" then
+---@return table<integer, curate.Span[]>  row -> { {group, start_col, end_col}, ... } (byte cols)
+function M.buffer_spans(lines, lang)
+  if not lang or #lines == 0 then
     return {}
   end
-  local ok, parser = pcall(vim.treesitter.get_string_parser, code, lang)
+  local src = table.concat(lines, "\n")
+  local ok, parser = pcall(vim.treesitter.get_string_parser, src, lang)
   if not ok or not parser then
     return {}
   end
@@ -59,20 +64,46 @@ function M.spans(code, lang)
   if not query then
     return {}
   end
-  local tree = parser:parse()[1]
+  local tree = (parser:parse() or {})[1]
   if not tree then
     return {}
   end
-  local spans = {}
-  -- Captures arrive in query order; more specific captures come later, so the
-  -- caller lays them in order and lets later extmarks win per attribute.
-  for id, node in query:iter_captures(tree:root(), code, 0, -1) do
-    local srow, scol, erow, ecol = node:range()
-    if srow == 0 and erow == 0 and ecol > scol then
-      spans[#spans + 1] = { "@" .. query.captures[id], scol, ecol }
+  local by_row = {}
+  -- Captures arrive in query order; more specific captures come later, so we
+  -- keep them in order and let the caller's later extmarks win per attribute.
+  local function push(row, group, s, e)
+    if e > s then
+      by_row[row] = by_row[row] or {}
+      by_row[row][#by_row[row] + 1] = { group, s, e }
     end
   end
-  return spans
+  for id, node in query:iter_captures(tree:root(), src, 0, -1) do
+    local group = "@" .. query.captures[id]
+    local srow, scol, erow, ecol = node:range()
+    if srow == erow then
+      push(srow + 1, group, scol, ecol)
+    else
+      -- e.g. a [[ long string ]] or block comment: paint each covered row.
+      for r = srow, erow do
+        local s = (r == srow) and scol or 0
+        local e = (r == erow) and ecol or #(lines[r + 1] or "")
+        push(r + 1, group, s, e)
+      end
+    end
+  end
+  return by_row
+end
+
+--- Highlight spans for a single standalone line (thin wrapper over buffer_spans;
+--- used where there is no surrounding file to parse).
+---@param code string
+---@param lang string|nil
+---@return curate.Span[]  {group, start_col, end_col} byte cols
+function M.spans(code, lang)
+  if code == "" then
+    return {}
+  end
+  return M.buffer_spans({ code }, lang)[1] or {}
 end
 
 return M

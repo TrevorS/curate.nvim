@@ -69,6 +69,28 @@ describe("syntax spans", function()
     assert.same({}, syntax.spans("whatever", nil))
     assert.same({}, syntax.spans("", "lua"))
   end)
+
+  it("parses the whole file so multi-line constructs get real context", function()
+    if not pcall(vim.treesitter.language.add, "lua") then
+      return
+    end
+    -- Line 2 sits INSIDE a [[ ]] long string; only whole-file parsing knows that.
+    local lines = { "local s = [[", "the middle line", "]]", "local n = 42" }
+    local by_row = syntax.buffer_spans(lines, "lua")
+    local function has(row, group)
+      for _, sp in ipairs(by_row[row] or {}) do
+        if sp[1] == group then
+          return true
+        end
+      end
+      return false
+    end
+    assert.is_true(has(2, "@string")) -- inside the string, not identifiers
+    assert.is_true(has(4, "@number")) -- 42 highlighted with full context
+    -- Per-line parsing of the middle line alone mis-reads it as identifiers.
+    local alone = syntax.spans("the middle line", "lua")
+    assert.is_false(alone[1] and alone[1][1] == "@string")
+  end)
 end)
 
 describe("tree", function()

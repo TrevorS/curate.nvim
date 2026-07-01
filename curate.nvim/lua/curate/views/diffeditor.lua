@@ -14,17 +14,17 @@ local fs = require("curate.diffeditor.fs")
 
 --- Build one diff-content row: a colored +/- gutter, then the code either
 --- syntax-highlighted with an add/remove line tint, or flat-colored as a
---- fallback (no treesitter parser, or the feature disabled).
+--- fallback (no treesitter parser, or the feature disabled). `spans` are the
+--- treesitter highlights for this exact source line (from syntax.buffer_spans).
 ---@param gutter string     e.g. "    + "
 ---@param code string
----@param lang string|nil
+---@param spans curate.Span[]|nil
 ---@param sign_hl string    fg group for the gutter sign (CurateAdded/CurateRemoved)
 ---@param line_hl string    bg group for the whole row (CurateAddedLine/…)
 ---@return curate.Row
-local function diff_row(gutter, code, lang, sign_hl, line_hl)
+local function diff_row(gutter, code, spans, sign_hl, line_hl)
   local r = render.row():add(gutter, sign_hl)
-  local spans = lang and syntax.spans(code, lang) or {}
-  if #spans > 0 then
+  if spans and #spans > 0 then
     r:add_spans(code, spans):line_bg(line_hl)
   else
     r:add(code, sign_hl) -- no parser: keep the flat green/red line
@@ -188,7 +188,11 @@ function DiffEditor:render()
     push(fr:done(), { file_index = fi })
 
     if not f.binary then
+      -- Parse each side's whole file ONCE (proper context), then project each
+      -- source line's highlights onto its diff row by line number.
       local lang = config.get("diff_syntax") and syntax.lang_for(f.path) or nil
+      local old_hl = lang and syntax.buffer_spans(f.old, lang) or {}
+      local new_hl = lang and syntax.buffer_spans(f.new, lang) or {}
       for hi, h in ipairs(f.hunks) do
         local mark = f.selected[hi] and "[x]" or "[ ]"
         local hl = f.selected[hi] and "CurateSelected" or "CurateDeselected"
@@ -203,15 +207,15 @@ function DiffEditor:render()
             :done(),
           { file_index = fi, hunk_index = hi }
         )
-        for _, l in ipairs(h.old_lines) do
+        for k, l in ipairs(h.old_lines) do
           push(
-            diff_row("    - ", l, lang, "CurateRemoved", "CurateRemovedLine"),
+            diff_row("    - ", l, old_hl[h.old_start + k - 1], "CurateRemoved", "CurateRemovedLine"),
             { file_index = fi, hunk_index = hi }
           )
         end
-        for _, l in ipairs(h.new_lines) do
+        for k, l in ipairs(h.new_lines) do
           push(
-            diff_row("    + ", l, lang, "CurateAdded", "CurateAddedLine"),
+            diff_row("    + ", l, new_hl[h.new_start + k - 1], "CurateAdded", "CurateAddedLine"),
             { file_index = fi, hunk_index = hi }
           )
         end

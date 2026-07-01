@@ -58,8 +58,11 @@ make `DiffAdd`/`DiffDelete` background-only.
 The diff- and merge-editors show **syntax highlighting and the diff at the same
 time**: code is treesitter-highlighted on the foreground while add/remove sits on
 the line background (`CurateAddedLine`/`CurateRemovedLine`, linked to
-`DiffAdd`/`DiffDelete`). Files whose language has no parser installed fall back
-to flat green/red. Disable with `require("curate").setup({ diff_syntax = false })`.
+`DiffAdd`/`DiffDelete`). Each side's file is parsed as a whole and the
+highlights are projected onto the diff rows by line number, so multi-line
+strings and comments colorize correctly (not the broken per-line way). Files
+whose language has no parser installed fall back to flat green/red. Disable with
+`require("curate").setup({ diff_syntax = false })`.
 
 Override any group to taste — `default = true` means your definition always wins:
 

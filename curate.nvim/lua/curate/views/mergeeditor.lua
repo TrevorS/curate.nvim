@@ -15,16 +15,16 @@ local M = {}
 
 --- A merge content row: prefix gutter, then code either syntax-highlighted
 --- (optionally over an add/remove line tint) or flat-colored as a fallback.
+--- `spans` are the treesitter highlights for this exact source line.
 ---@param prefix string
 ---@param code string
----@param lang string|nil
+---@param spans curate.Span[]|nil
 ---@param fallback_hl string    used for the code when no treesitter spans exist
 ---@param line_hl string|nil    optional whole-row background tint
 ---@return curate.Row
-local function code_row(prefix, code, lang, fallback_hl, line_hl)
+local function code_row(prefix, code, spans, fallback_hl, line_hl)
   local r = render.row():add(prefix, "CurateHint")
-  local spans = lang and syntax.spans(code, lang) or {}
-  if #spans > 0 then
+  if spans and #spans > 0 then
     r:add_spans(code, spans)
     if line_hl then
       r:line_bg(line_hl)
@@ -132,10 +132,38 @@ function MergeEditor:render()
 
   local lang = config.get("diff_syntax") and syntax.lang_for(self.name) or nil
 
+  -- Reconstruct each full side (segments partition each source file in order),
+  -- recording every segment's 0-based start per side, so treesitter parses the
+  -- whole file once and each displayed line maps back to real context.
+  local left_full, base_full, right_full = {}, {}, {}
+  local lstart, bstart, rstart = {}, {}, {}
   for si, s in ipairs(self.segs) do
-    if s.kind == "stable" or s.kind == "auto" then
-      for _, l in ipairs(s.lines) do
-        push(code_row("  ", l, lang, "CurateContext", nil), nil)
+    lstart[si], bstart[si], rstart[si] = #left_full, #base_full, #right_full
+    if s.kind == "stable" then
+      local anchor = s.lines[1]
+      left_full[#left_full + 1], base_full[#base_full + 1], right_full[#right_full + 1] =
+        anchor, anchor, anchor
+    else
+      vim.list_extend(left_full, s.left or {})
+      vim.list_extend(base_full, s.base or {})
+      vim.list_extend(right_full, s.right or {})
+    end
+  end
+  local left_hl = lang and syntax.buffer_spans(left_full, lang) or {}
+  local base_hl = lang and syntax.buffer_spans(base_full, lang) or {}
+  local right_hl = lang and syntax.buffer_spans(right_full, lang) or {}
+
+  for si, s in ipairs(self.segs) do
+    if s.kind == "stable" then
+      push(code_row("  ", s.lines[1], base_hl[bstart[si] + 1], "CurateContext", nil), nil)
+    elseif s.kind == "auto" then
+      -- Auto chunks display the winning side; highlight from that side's file.
+      local hl, start = right_hl, rstart[si]
+      if s.side ~= "right" then -- "left" or "both"
+        hl, start = left_hl, lstart[si]
+      end
+      for k, l in ipairs(s.lines) do
+        push(code_row("  ", l, hl[start + k], "CurateContext", nil), nil)
       end
     elseif s.kind == "conflict" then
       local picked = s.choice and ("✓ " .. s.choice) or "● choose a side"
@@ -147,17 +175,17 @@ function MergeEditor:render()
           :done(),
         si
       )
-      local function block(label, lines, fallback_hl, line_hl, key)
+      local function block(label, lines, side_hl, start, fallback_hl, line_hl, key)
         local tag = #lines == 0 and " (empty)" or ""
         push(render.row():add("│ " .. key .. " " .. label .. tag, "CurateHint"):done(), si)
-        for _, l in ipairs(lines) do
-          push(code_row("│   ", l, lang, fallback_hl, line_hl), si)
+        for k, l in ipairs(lines) do
+          push(code_row("│   ", l, side_hl[start + k], fallback_hl, line_hl), si)
         end
       end
       -- diff3 order: left (ours) · base (ancestor) · right (theirs).
-      block("left", s.left, "CurateAdded", "CurateAddedLine", "l")
-      block("base", s.base, "CurateContext", nil, "b")
-      block("right", s.right, "CurateRemoved", "CurateRemovedLine", "r")
+      block("left", s.left, left_hl, lstart[si], "CurateAdded", "CurateAddedLine", "l")
+      block("base", s.base, base_hl, bstart[si], "CurateContext", nil, "b")
+      block("right", s.right, right_hl, rstart[si], "CurateRemoved", "CurateRemovedLine", "r")
       push(render.row():add("└─", "CurateHunkHeader"):done(), si)
     end
   end

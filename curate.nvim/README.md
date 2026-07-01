@@ -25,6 +25,14 @@ The status home, the diff-editor (split mode), the op-log time machine, the 3-wa
 ![merge-editor](../screenshots/mergeeditor-open.png)
 ![revset workbench](../screenshots/revset-open.png)
 
+### Theming & rich diffs
+
+curate inherits your colorscheme, and the diff-editor shows treesitter syntax,
+injected languages, and intra-line word emphasis together (Catppuccin Mocha):
+
+![rich diff: syntax + word-level emphasis](../screenshots/richdiff.png)
+![injections: markdown, lua, and vimscript in one diff](../screenshots/injections.png)
+
 ## Requirements
 
 - Neovim **0.11+** (developed against 0.12)

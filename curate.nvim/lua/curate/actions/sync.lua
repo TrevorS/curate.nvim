@@ -50,21 +50,44 @@ end
 
 -- ── network: push ──
 
+--- Run `jj git push` with the given base args plus any transient flags.
+---@param base string[]  e.g. {} or { "--all" }
+---@param flags string[]|nil  sticky-arg flags from the push transient
+---@param label string
+local function git_push(base, flags, label)
+  local args = vim.list_extend({ "git", "push" }, base)
+  util.mutate(jj, vim.list_extend(args, flags or {}), label)
+end
+
 --- Push tracked bookmarks with unpushed changes to their remotes.
-function M.push()
-  util.mutate(jj, { "git", "push" }, "pushed")
+function M.push(flags)
+  git_push({}, flags, "pushed")
 end
 
 --- Push the change under the cursor (or @) as a new auto-named bookmark
 --- (push-<change-id>). The 80% "publish what I'm working on" gesture.
-function M.push_change()
+function M.push_change(flags)
   local id = util.cursor_change_id() or "@"
-  util.mutate(jj, { "git", "push", "--change", id }, "pushed " .. id:sub(1, 8))
+  git_push({ "--change", id }, flags, "pushed " .. id:sub(1, 8))
 end
 
 --- Push every bookmark (including new ones) to the default remote.
-function M.push_all()
-  util.mutate(jj, { "git", "push", "--all" }, "pushed all bookmarks")
+function M.push_all(flags)
+  git_push({ "--all" }, flags, "pushed all bookmarks")
+end
+
+--- P — the push transient: a sticky `--allow-new` arg over the push actions,
+--- the poster child for the transient engine's toggleable flags.
+function M.push_menu()
+  transient.open({
+    title = "push (git)",
+    items = {
+      { key = "n", arg = true, flag = "--allow-new", label = "allow new bookmarks" },
+      { key = "p", label = "push tracked bookmarks", run = M.push },
+      { key = "c", label = "push this change as a new bookmark", run = M.push_change },
+      { key = "P", label = "push all bookmarks", run = M.push_all },
+    },
+  })
 end
 
 -- ── the sync transient (network) ──

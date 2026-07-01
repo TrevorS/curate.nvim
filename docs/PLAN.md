@@ -119,15 +119,20 @@ The full roadmap is now shipped; what remains is explicitly out-of-scope (below)
 
 ---
 
-## ◻ P8 · magit-grade command grammar (planned)
+## ✅ P8 · magit-grade command grammar
 
 - **Delivers:** the net-new everyday verbs — `abandon` (`k`), `pull`
-  (fetch + rebase), `file untrack` (`K`) — plus a magit-grade polish pass:
-  finished sticky-arg toggles in the transient engine and `commit`/`log`/`push`
-  verb popups, all as rows in the one `keymap.lua` registry.
+  (fetch + rebase, sync `u`/`U`), `file untrack` (`K`) — plus the finished
+  sticky-arg toggles in the transient engine and a `push` verb popup (`P`) with
+  a `--allow-new` arg, all rows in the one `keymap.lua` registry. (The
+  `commit`/`log` popups from the sketch were dropped: those jj verbs have no
+  meaningful flags to toggle, so a popup was friction without payoff — `c`/`d`
+  and the log view stay direct.)
 - **Gated on:** P5 (sync), P6 (grammar/transient engine).
-- **GATE:** abandon drops a change and reparents its child; pull fetches then
-  rebases onto a moved trunk (bare-remote fixture); untrack removes an ignored
-  path from `jj status`; a `transient_spec` proves an arg toggle flips the argv.
-- **Sketch:** [`P8-command-grammar.md`](P8-command-grammar.md) — the full audit,
-  keymap deltas, and the stacked-PR plan.
+- **GATE:** `p8_spec` — abandon drops a change and reparents its child; untrack
+  removes a now-ignored path from `jj file list`; pull fetches then rebases onto
+  a moved trunk (bare-remote fixture). `transient_spec` proves an arg toggle
+  flips the flag list an action receives. **→ met (4 tests + abandon/untrack/
+  push-menu screenshots & GIFs).**
+- **Sketch:** [`P8-command-grammar.md`](P8-command-grammar.md) — the audit,
+  keymap deltas, and stacked-PR plan.

@@ -117,17 +117,19 @@ by callers that pass a stateful run"* — i.e. the toggle isn't wired. Finish it
 
 ### 3.2 Verb transients (opt-in popups, not new surfaces)
 
-Each is a `transient.open` spec — a few keys + args — opened from the status/log
-home. They *wrap* existing actions; the bare single-key bindings stay for muscle
+A `transient.open` spec — a few keys + sticky args — opened from the status/log
+home, *wrapping* existing actions; the bare single-key bindings stay for muscle
 memory.
 
-- **commit (`c`)** → `d` describe · `c` describe-and-new · `a` amend (re-describe
-  `@`) · `n` new. (Collapses today's `c`/`d` into one discoverable popup.)
-- **log (`l`)** → args `--all` `-n <count>` `-r <revset>`; actions: open log,
-  open revset workbench. (Today `e` opens the workbench; `l` gives the popup.)
-- **push (`P`)** → args `--all` `--change` `<remote>`; actions: push tracked /
-  this-change-as-bookmark / all. (Promotes today's `f`→push items to their own
-  magit-style `P` popup with sticky args; `f` sync menu stays.)
+- **push (`P`)** ✅ shipped → sticky arg `-n` (`--allow-new`); actions: push
+  tracked / this-change-as-bookmark / all. The arg rides along with whichever
+  action you pick. `f` (the combined sync menu) stays for the quick path.
+
+> **Dropped from the sketch:** `commit`/`log` popups. `jj commit`/`describe`
+> and `jj log` (as curate uses them) have no meaningful flags to *toggle*, so a
+> popup would be an extra keystroke with no payoff — `c`/`d` and the `e` revset
+> workbench stay direct. The sticky-arg engine only earns a popup where there
+> are real flags, and `push` is that case.
 
 > **Not** a diff popup: `d` is `describe` here, and `=`/`<CR>` already show the
 > diff of the change (and its hunks) — magit's `d` popup would only add a key
@@ -155,14 +157,12 @@ Lower = safe · **UPPER = rewrites / changes what `@` records**. New rows only:
 | view | key | action | label | rw |
 |---|---|---|---|---|
 | status, log | `k` | `route.abandon` | abandon change | ⚠ |
-| status (file node) | `K` | `files.untrack` | untrack file | ⚠ |
-| status, log | `l` | `power.log` (transient) | log menu | |
-| status, log | `c` | `name.commit_menu` (transient) | commit menu | |
-| status, log | `P` | `sync.push_menu` (transient) | push menu | |
+| status | `K` | `files.untrack` | untrack file (must be ignored) | |
+| status, log | `P` | `sync.push_menu` (transient) | push menu (sticky `-n`) | |
 | sync transient | `u`/`U` | `sync.pull` / `pull_all` | pull (fetch + rebase) | ⚠ |
 
-`c` today runs `name.commit` directly; it becomes the transient whose default
-(`c`) is still commit — zero relearning, more discoverable.
+`K` (untrack) is upper-case as a "careful, changes what @ records" cue but is
+not history-rewriting, so it carries no `rw`/dot-repeat flag.
 
 ---
 
@@ -191,18 +191,19 @@ Stacked on `claude/curate-nvim-themes-lcoctn`. Each PR is one gated commit
 ([WORKFLOW.md](WORKFLOW.md): `make test` green + screenshot where a surface
 changes).
 
-1. **PR-1 (this): the sketch.** No code; agrees the grammar and keymap deltas.
-2. **PR-2: net-new verbs.** `route.abandon`, `sync.pull`/`pull_all`,
+1. **PR-1 (this): the sketch.** ✅ No code; agrees the grammar and keymap deltas.
+2. **PR-2: net-new verbs.** ✅ `route.abandon`, `sync.pull`/`pull_all`,
    `actions/files.untrack`; keymap rows `k`/`K` and sync `u`/`U`.
-   - **GATE:** integration specs — abandon drops a change and reparents its
-     child; pull fetches then rebases onto a moved trunk (bare-remote fixture,
-     like `sync_spec`); untrack removes a gitignored path from `jj status`.
+   - **GATE (met):** `p8_spec` — abandon drops a change and reparents its child;
+     pull fetches then rebases onto a moved trunk (bare-remote fixture, like
+     `sync_spec`); untrack removes a gitignored path from `jj file list`.
      `keymap_spec` proves the new action strings resolve.
-3. **PR-3: transient args + verb popups.** Finish the sticky-arg toggle in
-   `ui/transient.lua`; add the `c`/`l`/`P` menus.
-   - **GATE:** a `transient_spec` toggling an arg flips the assembled argv;
-     `keymap_spec` covers the menu entries; refreshed `status` screenshot shows
-     a popup with a `[✓]` arg.
+3. **PR-3: transient args + push popup.** ✅ Finished the sticky-arg toggle in
+   `ui/transient.lua`; added the `P` push menu (`commit`/`log` popups dropped,
+   see §3.2).
+   - **GATE (met):** `transient_spec` toggles an arg and asserts the flag list
+     an action receives; `keymap_spec` covers `sync.push_menu`; the `pushmenu`
+     GIF shows the `[✓]` arg.
 
 Splitting net-new verbs (PR-2) from the transient engine (PR-3) keeps each PR
 small, independently reviewable, and independently revertible.

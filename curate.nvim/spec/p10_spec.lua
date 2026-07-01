@@ -44,6 +44,20 @@ describe("P10 op-log limit + abandon flags (integration)", function()
     assert.equals(2, #limited, "--limit 2 caps to 2 ops")
   end)
 
+  it("op-log reports a jj error for a junk --limit instead of empty ops", function()
+    -- The view relies on this err to keep its last good render (and notify)
+    -- rather than silently blanking when the user types a non-numeric limit.
+    local jj = require("curate.jj")
+    local got_err
+    jj.oplog(function(_, err)
+      got_err = err
+    end, { "--limit", "not-a-number" })
+    assert.is_true(vim.wait(3000, function()
+      return got_err ~= nil
+    end, 25))
+    assert.is_true(got_err ~= "", "jj must surface the bad-flag error")
+  end)
+
   it("abandon accepts the menu's --restore-descendants flag", function()
     -- guards a bad flag: run the exact argv abandon_menu builds and assert exit 0
     H.write(dir, "f.txt", "a\n")

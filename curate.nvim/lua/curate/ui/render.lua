@@ -64,6 +64,20 @@ function Builder:line_bg(hl)
   return self
 end
 
+--- Add a highlight over already-appended text, by absolute byte columns, without
+--- appending any text. Laid after earlier spans, so a background emphasis (e.g.
+--- word-diff) overrides an earlier line tint while foreground spans survive.
+---@param start_col integer
+---@param end_col integer
+---@param hl string|nil
+---@return curate.RowBuilder
+function Builder:mark(start_col, end_col, hl)
+  if hl and end_col > start_col then
+    self.spans[#self.spans + 1] = { hl, start_col, end_col }
+  end
+  return self
+end
+
 --- Materialise into a `curate.Row`.
 ---@return curate.Row
 function Builder:done()

@@ -66,6 +66,11 @@ strings and comments colorize correctly (not the broken per-line way), and
 language has no parser installed fall back to flat green/red. Disable with
 `require("curate").setup({ diff_syntax = false })`.
 
+On a **modified** line the diff-editor also emphasises just the tokens that
+actually changed (intra-line word diff, `CurateAddedText`/`CurateRemovedText`
+→ `DiffText`) — a one-word rename lights up that word, not the whole line.
+Disable with `diff_word = false`.
+
 Override any group to taste — `default = true` means your definition always wins:
 
 ```lua
@@ -76,9 +81,9 @@ vim.api.nvim_set_hl(0, "CurateCurrent", { link = "Statement" })
 Groups: `CurateChangeId` `CurateCommitId` `CurateAuthor` `CurateAgo`
 `CurateSubject` `CurateCurrent` `CurateImmutable` `CurateConflict`
 `CurateDivergent` `CurateEmpty` `CurateFile` `CurateHunkHeader` `CurateAdded`
-`CurateRemoved` `CurateAddedLine` `CurateRemovedLine` `CurateContext`
-`CurateSelected` `CurateDeselected` `CurateRebaseDest` `CurateOpCurrent`
-`CurateOpId` `CurateHint` `CurateGraph`.
+`CurateRemoved` `CurateAddedLine` `CurateRemovedLine` `CurateAddedText`
+`CurateRemovedText` `CurateContext` `CurateSelected` `CurateDeselected`
+`CurateRebaseDest` `CurateOpCurrent` `CurateOpId` `CurateHint` `CurateGraph`.
 
 ## Keymap (the contract)
 

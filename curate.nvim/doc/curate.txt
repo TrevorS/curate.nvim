@@ -124,14 +124,19 @@ in vim.cmd[[...]], fenced code in markdown, …) render in their own language.
 Languages with no parser fall back to flat green/red. Toggle with the
 `diff_syntax` option (default true).
 
+On a modified line the diff-editor also emphasises just the tokens that changed
+(intra-line word diff, CurateAddedText / CurateRemovedText). Toggle with the
+`diff_word` option (default true).
+
 Override any group; because the links use {default=true}, yours always wins: >
     vim.api.nvim_set_hl(0, "CurateChangeId", { fg = "#f5c2e7", bold = true })
 <
 Groups: CurateChangeId CurateCommitId CurateAuthor CurateAgo CurateSubject
 CurateCurrent CurateImmutable CurateConflict CurateDivergent CurateEmpty
 CurateFile CurateHunkHeader CurateAdded CurateRemoved CurateAddedLine
-CurateRemovedLine CurateContext CurateSelected CurateDeselected CurateRebaseDest
-CurateOpCurrent CurateOpId CurateHint CurateGraph.
+CurateRemovedLine CurateAddedText CurateRemovedText CurateContext CurateSelected
+CurateDeselected CurateRebaseDest CurateOpCurrent CurateOpId CurateHint
+CurateGraph.
 
 ==============================================================================
 8. HEALTH                                                        *curate-health*

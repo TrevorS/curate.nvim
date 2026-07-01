@@ -28,6 +28,11 @@ local links = {
   -- themes), so treesitter foreground colors stay legible on top.
   CurateAddedLine = "DiffAdd",
   CurateRemovedLine = "DiffDelete",
+  -- Stronger background for the exact tokens that changed within a modified
+  -- line (intra-line / word diff). DiffText is the standard "changed region"
+  -- group; bg-only under modern themes, so syntax foreground survives.
+  CurateAddedText = "DiffText",
+  CurateRemovedText = "DiffText",
   CurateContext = "Comment",
   CurateSelected = "Added", -- chosen side / selected hunk (green fg)
   CurateDeselected = "Comment",

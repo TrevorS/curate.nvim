@@ -18,6 +18,9 @@ local defaults = {
   -- line-background tint so syntax colors stay legible). Falls back to flat
   -- green/red when no parser is installed for the language.
   diff_syntax = true,
+  -- Emphasise the exact tokens that changed within a modified line (intra-line
+  -- word diff) in the diff-editor.
+  diff_word = true,
   -- Enable which-key integration if the plugin is installed.
   which_key = true,
 }
@@ -34,6 +37,7 @@ function M.apply(opts)
     refresh_debounce = { opts.refresh_debounce, "number", true },
     confirm_immutable = { opts.confirm_immutable, "boolean", true },
     diff_syntax = { opts.diff_syntax, "boolean", true },
+    diff_word = { opts.diff_word, "boolean", true },
   })
   M.options = vim.tbl_deep_extend("force", vim.deepcopy(defaults), opts)
   return M.options

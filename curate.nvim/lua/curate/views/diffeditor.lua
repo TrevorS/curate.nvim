@@ -8,6 +8,7 @@
 
 local render = require("curate.ui.render")
 local syntax = require("curate.ui.syntax")
+local worddiff = require("curate.diffeditor.worddiff")
 local config = require("curate.config")
 local hunks_engine = require("curate.diffeditor.hunks")
 local fs = require("curate.diffeditor.fs")
@@ -15,19 +16,28 @@ local fs = require("curate.diffeditor.fs")
 --- Build one diff-content row: a colored +/- gutter, then the code either
 --- syntax-highlighted with an add/remove line tint, or flat-colored as a
 --- fallback (no treesitter parser, or the feature disabled). `spans` are the
---- treesitter highlights for this exact source line (from syntax.buffer_spans).
+--- treesitter highlights for this exact source line (from syntax.buffer_spans);
+--- `emph` are word-diff ranges (byte cols) to emphasise on top.
 ---@param gutter string     e.g. "    + "
 ---@param code string
 ---@param spans curate.Span[]|nil
 ---@param sign_hl string    fg group for the gutter sign (CurateAdded/CurateRemoved)
 ---@param line_hl string    bg group for the whole row (CurateAddedLine/…)
+---@param emph_hl string    bg group for changed tokens (CurateAddedText/…)
+---@param emph integer[][]|nil  {scol, ecol} byte ranges within `code`
 ---@return curate.Row
-local function diff_row(gutter, code, spans, sign_hl, line_hl)
+local function diff_row(gutter, code, spans, sign_hl, line_hl, emph_hl, emph)
   local r = render.row():add(gutter, sign_hl)
   if spans and #spans > 0 then
     r:add_spans(code, spans):line_bg(line_hl)
   else
     r:add(code, sign_hl) -- no parser: keep the flat green/red line
+  end
+  if emph then
+    local base = #gutter
+    for _, rng in ipairs(emph) do
+      r:mark(base + rng[1], base + rng[2], emph_hl)
+    end
   end
   return r:done()
 end
@@ -193,6 +203,7 @@ function DiffEditor:render()
       local lang = config.get("diff_syntax") and syntax.lang_for(f.path) or nil
       local old_hl = lang and syntax.buffer_spans(f.old, lang) or {}
       local new_hl = lang and syntax.buffer_spans(f.new, lang) or {}
+      local word = config.get("diff_word")
       for hi, h in ipairs(f.hunks) do
         local mark = f.selected[hi] and "[x]" or "[ ]"
         local hl = f.selected[hi] and "CurateSelected" or "CurateDeselected"
@@ -207,15 +218,36 @@ function DiffEditor:render()
             :done(),
           { file_index = fi, hunk_index = hi }
         )
+        -- Word-level emphasis: which tokens actually changed on each line.
+        local del, ins = {}, {}
+        if word then
+          del, ins = worddiff.ranges(h.old_lines, h.new_lines)
+        end
         for k, l in ipairs(h.old_lines) do
           push(
-            diff_row("    - ", l, old_hl[h.old_start + k - 1], "CurateRemoved", "CurateRemovedLine"),
+            diff_row(
+              "    - ",
+              l,
+              old_hl[h.old_start + k - 1],
+              "CurateRemoved",
+              "CurateRemovedLine",
+              "CurateRemovedText",
+              del[k]
+            ),
             { file_index = fi, hunk_index = hi }
           )
         end
         for k, l in ipairs(h.new_lines) do
           push(
-            diff_row("    + ", l, new_hl[h.new_start + k - 1], "CurateAdded", "CurateAddedLine"),
+            diff_row(
+              "    + ",
+              l,
+              new_hl[h.new_start + k - 1],
+              "CurateAdded",
+              "CurateAddedLine",
+              "CurateAddedText",
+              ins[k]
+            ),
             { file_index = fi, hunk_index = hi }
           )
         end

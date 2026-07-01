@@ -124,7 +124,7 @@ The full roadmap is now shipped; what remains is explicitly out-of-scope (below)
 - **Delivers:** the net-new everyday verbs — `abandon` (`k`), `pull`
   (fetch + rebase, sync `u`/`U`), `file untrack` (`K`) — plus the finished
   sticky-arg toggles in the transient engine and a `push` verb popup (`P`) with
-  a `--allow-new` arg, all rows in the one `keymap.lua` registry. (The
+  a `--dry-run` arg, all rows in the one `keymap.lua` registry. (The
   `commit`/`log` popups from the sketch were dropped: those jj verbs have no
   meaningful flags to toggle, so a popup was friction without payoff — `c`/`d`
   and the log view stay direct.)
@@ -132,7 +132,24 @@ The full roadmap is now shipped; what remains is explicitly out-of-scope (below)
 - **GATE:** `p8_spec` — abandon drops a change and reparents its child; untrack
   removes a now-ignored path from `jj file list`; pull fetches then rebases onto
   a moved trunk (bare-remote fixture). `transient_spec` proves an arg toggle
-  flips the flag list an action receives. **→ met (4 tests + abandon/untrack/
-  push-menu screenshots & GIFs).**
+  flips the flag list an action receives; `sync_spec` runs the push menu's
+  `--dry-run` argv against jj so a bad flag can't slip past a string test.
+  **→ met (4 tests + abandon/untrack/push-menu screenshots & GIFs).**
 - **Sketch:** [`P8-command-grammar.md`](P8-command-grammar.md) — the audit,
   keymap deltas, and stacked-PR plan.
+
+## ✅ P9 · sticky args everywhere
+
+- **Delivers:** magit-style sticky args plumbed through every menu with useful
+  flags — `--all-remotes` on the fetch/pull menu (`f`, split from push per
+  magit's F/P), `--dry-run` + a `--remote` **value arg** on the push menu (`P`),
+  `--skip-emptied`/`--keep-divergent` on the rebase transient (`r`). The
+  transient engine gains **value args** (`=thing`, a prompted flag value).
+  Instant rewrites (`s`/`n`/`k`) stay instant on purpose.
+- **Gated on:** P8 (the transient engine + push menu).
+- **GATE:** `transient_spec` proves value args contribute `flag value`, compose
+  with booleans in item order, clear on empty, and render as `[=val]`; `p9_spec`
+  proves `rebase --skip-emptied` abandons an emptied commit; `sync_spec` proves
+  the push `--remote`/`--dry-run` and fetch `--all-remotes` flags are accepted by
+  jj. **→ met (4 tests + fetch/push/rebase menu GIFs).**
+- **Sketch:** [`P9-sticky-args.md`](P9-sticky-args.md).

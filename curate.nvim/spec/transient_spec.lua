@@ -69,4 +69,38 @@ describe("transient sticky args", function()
     )
     assert.same({ "--allow-new" }, got)
   end)
+
+  it("value args contribute flag + value, compose with booleans, and clear", function()
+    local h = open({
+      { key = "d", arg = true, flag = "--dry-run", label = "dry run" },
+      { key = "r", arg = true, value = true, flag = "--remote", label = "remote" },
+      { key = "p", label = "push", run = function() end },
+    })
+    assert.same({}, h.flags())
+    h.setval("r", "origin")
+    assert.same({ "--remote", "origin" }, h.flags())
+    h.toggle("d")
+    assert.same({ "--dry-run", "--remote", "origin" }, h.flags()) -- item order preserved
+    h.setval("r", "") -- empty clears the value arg
+    assert.same({ "--dry-run" }, h.flags())
+    h.close()
+  end)
+
+  it("renders a value arg as [=val]", function()
+    local h = open({
+      { key = "r", arg = true, value = true, flag = "--remote", label = "remote" },
+      { key = "p", label = "push", run = function() end },
+    })
+    local function argline()
+      for _, l in ipairs(vim.api.nvim_buf_get_lines(h.buf, 0, -1, false)) do
+        if l:find("remote", 1, true) then
+          return l
+        end
+      end
+    end
+    assert.is_truthy(argline():find("[ ]", 1, true), "empty value shows [ ]")
+    h.setval("r", "upstream")
+    assert.is_truthy(argline():find("[=upstream]", 1, true), "set value shows [=upstream]")
+    h.close()
+  end)
 end)

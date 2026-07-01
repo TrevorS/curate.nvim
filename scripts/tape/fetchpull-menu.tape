@@ -1,6 +1,6 @@
-# VHS tape: the push transient (P) with sticky args — boolean -d (--dry-run) and
-# value =r (--remote). Catppuccin Mocha; needs CURATE_COLORSCHEME_PATH.
-Output pushmenu.gif
+# VHS tape: the fetch/pull transient (f) with a sticky -a (--all-remotes) arg.
+# Catppuccin Mocha; needs CURATE_COLORSCHEME_PATH.
+Output fetchpull.gif
 Set Theme "Catppuccin Mocha"
 Set FontSize 16
 Set Width 1200
@@ -14,19 +14,11 @@ Sleep 2s
 Show
 
 Sleep 700ms
-Type "P"
+Type "f"
 Sleep 1200ms
-Screenshot push-menu.png
+Screenshot fetchpull-menu.png
 Sleep 400ms
-# set the =remote value arg → [=origin]
-Type "r"
-Sleep 500ms
-Type "origin"
-Sleep 300ms
-Enter
-Sleep 900ms
-# toggle the -d dry-run boolean arg → [✓]
-Type "d"
+Type "a"
 Sleep 1000ms
-Screenshot push-menu-arg.png
+Screenshot fetchpull-menu-arg.png
 Sleep 800ms

@@ -16,6 +16,8 @@ function Oplog.new()
   local self = View.new("oplog")
   self.ops = {} ---@type curate.Op[]
   self.targets = {}
+  self.flags = {} ---@type string[]  display flags (e.g. --limit) from the options menu
+  self.limit = nil ---@type string|nil  the active --limit value, echoed back into the menu
   return setmetatable(self, Oplog)
 end
 
@@ -33,12 +35,51 @@ function Oplog.open()
 end
 
 function Oplog:reload()
-  jj.oplog(function(ops)
+  jj.oplog(function(ops, err)
+    -- A bad flag (e.g. a non-numeric --limit) must not silently blank the
+    -- view: surface jj's error and keep the last good render.
+    if err and err ~= "" then
+      vim.notify("curate: op log: " .. vim.trim(err), vim.log.levels.WARN)
+      return
+    end
     self.ops = ops
     if self:valid() then
       self:render()
     end
-  end)
+  end, self.flags)
+end
+
+--- o — the op-log options menu: a sticky `-n --limit` value arg that re-renders
+--- how many operations are shown. The op-log's take on magit-log's display args.
+--- The menu opens pre-filled with the active limit so state stays visible.
+function Oplog:options()
+  require("curate.ui.transient").open({
+    title = "op-log options",
+    items = {
+      {
+        key = "n",
+        arg = true,
+        value = true,
+        flag = "--limit",
+        label = "limit (# ops)",
+        val = self.limit,
+      },
+      {
+        key = "a",
+        label = "apply",
+        run = function(flags)
+          self.flags = flags
+          self.limit = nil
+          for i, f in ipairs(flags) do
+            if f == "--limit" then
+              self.limit = flags[i + 1]
+            end
+          end
+          self:reload()
+        end,
+      },
+    },
+  })
 end
 
 function Oplog:refresh()
@@ -57,7 +98,10 @@ function Oplog:render()
   rows[1] = render.row():add("Operation log", "CurateFile"):done()
   rows[2] = render
     .row()
-    :add("  <CR> restore (safe) · = diff · g- g+ walk · u undo · append-only", "CurateHint")
+    :add(
+      "  <CR> restore · = diff · g- g+ walk · u undo · o options · append-only",
+      "CurateHint"
+    )
     :done()
   rows[3] = render.row():add("", nil):done()
   for _, op in ipairs(self.ops) do

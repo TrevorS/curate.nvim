@@ -144,8 +144,11 @@ The full roadmap is now shipped; what remains is explicitly out-of-scope (below)
   flags — `--all-remotes` on the fetch/pull menu (`f`, split from push per
   magit's F/P), `--dry-run` + a `--remote` **value arg** on the push menu (`P`),
   `--skip-emptied`/`--keep-divergent` on the rebase transient (`r`). The
-  transient engine gains **value args** (`=thing`, a prompted flag value).
-  Instant rewrites (`s`/`n`/`D`) stay instant on purpose.
+  transient engine gains **value args** (`=thing`, a prompted flag value). A
+  follow-on extends coverage to the remaining views: an **abandon menu** (`D`,
+  `--restore-descendants`/`--retain-bookmarks`) and an **op-log options menu**
+  (`o`, a `=limit` value arg that re-renders the view). The hot ROUTE verbs
+  (`s`/`n`/absorb) stay instant on purpose.
 - **Gated on:** P8 (the transient engine + push menu).
 - **GATE:** `transient_spec` proves value args contribute `flag value`, compose
   with booleans in item order, clear on empty, and render as `[=val]`; `p9_spec`

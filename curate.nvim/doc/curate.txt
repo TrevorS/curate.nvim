@@ -65,7 +65,7 @@ Home / log buffer ~
     A      absorb working copy             c   commit (describe + new)
     s      squash into parent / mark       S   squash interactively (hunks)
     x      split interactively (hunks)     =   restore from parent
-    D      abandon (drop) change           K   untrack file (must be ignored)
+    D      abandon menu (sticky -d/-b)     K   untrack file (must be ignored)
     m      mark target                     r   rebase transient (sticky -e/-k)
     R      resolve conflicts (3-way)       b   bookmark menu
     f      fetch/pull menu (sticky -a)     P   push menu (sticky -d/=remote)
@@ -85,6 +85,7 @@ Merge-editor buffer (3-way) ~
 Op-log buffer ~
     <CR>  restore to op (append-only)   =  diff this op
     g- g+ undo/redo walk                L  evolog        u  undo
+    o     options (sticky --limit)
 
 Revset workbench ~
     Line 1 is an editable revset; the log recomputes live below as you type.

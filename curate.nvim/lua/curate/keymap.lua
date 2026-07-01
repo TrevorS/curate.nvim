@@ -31,6 +31,12 @@ local SPECIAL = {
       v:show_diff()
     end
   end,
+  ["view.options"] = function()
+    local v = M._active_view()
+    if v and v.options then
+      v:options()
+    end
+  end,
   ["view.close"] = function()
     local v = M._active_view()
     if v then
@@ -55,7 +61,7 @@ M.maps = {
     { "S", "route.squash_interactive", "squash interactively", rw = true },
     { "x", "route.split_interactive", "split interactively", rw = true },
     { "=", "route.restore", "restore hunk/file from parent", rw = true },
-    { "D", "route.abandon", "abandon (drop) change", rw = true },
+    { "D", "route.abandon_menu", "abandon (drop) menu", rw = true },
     { "K", "files.untrack", "untrack file (must be ignored)" },
     { "m", "reshape.mark", "mark target" },
     { "r", "reshape.rebase", "rebase (transient)", rw = true },
@@ -81,7 +87,7 @@ M.maps = {
     { "r", "reshape.rebase", "rebase (transient)", rw = true },
     { "R", "route.resolve", "resolve conflicts (3-way)", rw = true },
     { "s", "route.squash", "squash → parent", rw = true },
-    { "D", "route.abandon", "abandon (drop) change", rw = true },
+    { "D", "route.abandon_menu", "abandon (drop) menu", rw = true },
     { "b", "sync.bookmark", "bookmark menu" },
     { "f", "sync.menu", "fetch/pull menu (sticky --all-remotes)" },
     { "P", "sync.push_menu", "push menu (sticky --dry-run/=remote)" },
@@ -99,6 +105,7 @@ M.maps = {
     { "g+", "trust.redo", "redo walk" },
     { "L", "trust.evolog", "evolog of change" },
     { "u", "trust.undo", "undo last (global)" },
+    { "o", "view.options", "options (sticky --limit)" },
     { "g", "view.refresh", "refresh" },
     { "q", "view.close", "close" },
   },

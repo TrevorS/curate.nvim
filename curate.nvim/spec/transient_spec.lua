@@ -103,4 +103,16 @@ describe("transient sticky args", function()
     assert.is_truthy(argline():find("[=upstream]", 1, true), "set value shows [=upstream]")
     h.close()
   end)
+
+  it("a pre-set val renders and contributes immediately (menu reflects state)", function()
+    -- The op-log options menu re-opens with the active --limit pre-filled.
+    local h = open({
+      { key = "n", arg = true, value = true, flag = "--limit", label = "limit", val = "4" },
+      { key = "a", label = "apply", run = function() end },
+    })
+    assert.same({ "--limit", "4" }, h.flags())
+    local shown = table.concat(vim.api.nvim_buf_get_lines(h.buf, 0, -1, false), "\n")
+    assert.is_truthy(shown:find("[=4]", 1, true), "pre-set value shows [=4]")
+    h.close()
+  end)
 end)

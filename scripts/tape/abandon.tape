@@ -1,4 +1,4 @@
-# VHS tape: abandon a change (k) from the log, Catppuccin Mocha. Needs a
+# VHS tape: abandon a change (D → menu → k) from the log, Catppuccin Mocha. Needs a
 # catppuccin/nvim checkout at CURATE_COLORSCHEME_PATH (else falls back).
 Output abandon.gif
 Set Theme "Catppuccin Mocha"
@@ -16,10 +16,12 @@ Show
 Sleep 800ms
 Screenshot abandon-before.png
 Sleep 400ms
-# land on the 'feat: status view' change (mutable, not @ → no confirm) and kill it
+# land on the scratch change, open the abandon menu (D), and execute (k)
 Type "/scratch experiment"
 Enter
 Sleep 500ms
+Type "D"
+Sleep 1000ms
 Type "k"
 Sleep 1800ms
 Screenshot abandon-after.png

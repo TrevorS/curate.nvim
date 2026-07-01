@@ -61,7 +61,7 @@ M.maps = {
     { "S", "route.squash_interactive", "squash interactively", rw = true },
     { "x", "route.split_interactive", "split interactively", rw = true },
     { "=", "route.restore", "restore hunk/file from parent", rw = true },
-    { "k", "route.abandon_menu", "abandon menu", rw = true },
+    { "D", "route.abandon_menu", "abandon (drop) menu", rw = true },
     { "K", "files.untrack", "untrack file (must be ignored)" },
     { "m", "reshape.mark", "mark target" },
     { "r", "reshape.rebase", "rebase (transient)", rw = true },
@@ -87,7 +87,7 @@ M.maps = {
     { "r", "reshape.rebase", "rebase (transient)", rw = true },
     { "R", "route.resolve", "resolve conflicts (3-way)", rw = true },
     { "s", "route.squash", "squash → parent", rw = true },
-    { "k", "route.abandon_menu", "abandon menu", rw = true },
+    { "D", "route.abandon_menu", "abandon (drop) menu", rw = true },
     { "b", "sync.bookmark", "bookmark menu" },
     { "f", "sync.menu", "fetch/pull menu (sticky --all-remotes)" },
     { "P", "sync.push_menu", "push menu (sticky --dry-run/=remote)" },
@@ -159,6 +159,22 @@ local function dispatch(action, rw)
   m[fn]()
 end
 
+--- Whether another mapping in the same list extends `lhs` (e.g. g vs g-/g+).
+--- Such a key must NOT be nowait: nowait fires the short map the instant it's
+--- typed, making the longer mappings unreachable.
+---@param list table[]
+---@param lhs string
+---@return boolean
+local function has_longer(list, lhs)
+  for _, other in ipairs(list) do
+    local olhs = other[1]
+    if #olhs > #lhs and olhs:sub(1, #lhs) == lhs then
+      return true
+    end
+  end
+  return false
+end
+
 --- Install buffer-local maps via FileType autocmds for each registered ft.
 function M.install()
   local grp = vim.api.nvim_create_augroup("curate.keymap", { clear = true })
@@ -171,7 +187,12 @@ function M.install()
           local lhs, action, label, rw = entry[1], entry[2], entry[3], entry.rw
           vim.keymap.set("n", lhs, function()
             dispatch(action, rw)
-          end, { buffer = a.buf, nowait = true, silent = true, desc = "curate: " .. label })
+          end, {
+            buffer = a.buf,
+            nowait = not has_longer(list, lhs),
+            silent = true,
+            desc = "curate: " .. label,
+          })
         end
         -- `.` repeats the last history-rewriting gesture (absorb/squash/split…).
         vim.keymap.set("n", ".", function()

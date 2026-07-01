@@ -35,11 +35,11 @@ injected languages, and intra-line word emphasis together (Catppuccin Mocha):
 
 ### Command grammar (magit-style)
 
-`k` abandons the change under the cursor (children reparent); `K` untracks an
+`D` abandons (drops) the change under the cursor (children reparent); `K` untracks an
 ignored-but-committed file; the sync menu (`f`) grows a `pull` (fetch + rebase
 onto trunk):
 
-![abandon a change with k](../screenshots/abandon.gif)
+![abandon a change with D](../screenshots/abandon.gif)
 ![untrack a file with K](../screenshots/untrack.gif)
 ![sync menu with pull](../screenshots/sync-menu.png)
 
@@ -51,7 +51,7 @@ show `[=origin]`. They're plumbed through every menu with useful flags:
 - **fetch/pull** (`f`) — `-a` `--all-remotes`
 - **push** (`P`) — `-d` `--dry-run` · `=r` `--remote <name>`
 - **rebase** (`r`) — `-e` `--skip-emptied` · `-k` `--keep-divergent`
-- **abandon** (`k`) — `-d` `--restore-descendants` · `-b` `--retain-bookmarks`
+- **abandon** (`D`) — `-d` `--restore-descendants` · `-b` `--retain-bookmarks`
 - **op-log** (`o`, in the op-log view) — `=` `--limit` (value arg; re-renders live)
 
 ![push menu with sticky --dry-run and =remote args](../screenshots/pushmenu.gif)
@@ -138,7 +138,11 @@ Lower-case = safe · **UPPER-case = rewrites history**. `.` repeats the last rew
 | `S` | **squash interactively (hunks)** | `jj squash -i` |
 | `x` | **split interactively (hunks)** | `jj split -i` |
 | `=` | **restore hunk/file from parent** | `jj restore` |
-| `k` | **abandon menu** (reparents children; sticky `-d` `--restore-descendants` · `-b` `--retain-bookmarks`) | `jj abandon` |
+<<<<<<< HEAD
+| `D` | **abandon menu** (reparents children; sticky `-d` `--restore-descendants` · `-b` `--retain-bookmarks`) | `jj abandon` |
+=======
+| `D` | **abandon (drop) change** (reparents children; confirm on @) | `jj abandon` |
+>>>>>>> claude/curate-sticky-args
 | `K` | untrack file under cursor (must be ignored) | `jj file untrack` |
 | `m` `r` | mark · **rebase transient** (onto / -r / -b / insert ±; sticky `-e`/`-k`) | `jj rebase` |
 | `R` | **resolve conflicts (3-way merge-editor)** | `jj resolve` |

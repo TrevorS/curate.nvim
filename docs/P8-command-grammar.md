@@ -51,8 +51,10 @@ off the existing status/log views and the transient engine.
 `jj abandon -r <change>` deletes the change and rebases its descendants onto its
 parent. It is the "kill this" verb magit spells `k`.
 
-- **Key:** `k` (mnemonic "kill"; unbound today) in `curate-status` and
-  `curate-log`. Marked `rw = true` so `.` repeats it and the cheatsheet flags it.
+- **Key:** `D` (mnemonic "drop") in `curate-status` and `curate-log`. Marked
+  `rw = true` so `.` repeats it and the cheatsheet flags it. **Not** magit's
+  `k`: in a Vim list buffer `k` is the up-motion users navigate with — mapping
+  it (nowait) would eat the motion. Emacs has no such conflict; we do.
 - **Module:** `actions/route.lua` → `M.abandon()` (abandon is a routing verb —
   it moves a change's *contents* to nowhere). Target = change under cursor, or
   `@`.
@@ -87,8 +89,8 @@ onto the freshly-moved `trunk()`. magit's `F` in one gesture.
 (the file must be ignored, else jj re-adds it — we hint this on error).
 
 - **Key:** `K` on a **file node** in the status diff tree (`curate-status`).
-  Upper-case because it changes what `@` records. `k` is taken by abandon at the
-  change level; `K` reads as "untrack the file the cursor is on."
+  Upper-case because it changes what `@` records. (Lower-case `k` is the
+  up-motion.) `K` reads as "untrack the file the cursor is on."
 - **Module:** new `actions/files.lua` → `M.untrack()`, reading the file path
   from the status tree node under the cursor (`util.cursor_target()` already
   returns the node; extend it to expose `node.file.path`).
@@ -157,7 +159,7 @@ Lower = safe · **UPPER = rewrites / changes what `@` records**. New rows only:
 
 | view | key | action | label | rw |
 |---|---|---|---|---|
-| status, log | `k` | `route.abandon` | abandon change | ⚠ |
+| status, log | `D` | `route.abandon` | abandon (drop) change | ⚠ |
 | status | `K` | `files.untrack` | untrack file (must be ignored) | |
 | status, log | `P` | `sync.push_menu` (transient) | push menu (sticky `-n`) | |
 | sync transient | `u`/`U` | `sync.pull` / `pull_all` | pull (fetch + rebase) | ⚠ |
@@ -180,7 +182,7 @@ not history-rewriting, so it carries no `rw`/dot-repeat flag.
 - **undo** — `u` → `jj undo`; `g-`/`g+` walk. *(done)*
 - **git push** — `P` menu → `jj git push [--all|--change]`. *(polish)*
 - **branch** — `b` menu → `jj bookmark set/tug/delete/forget/track/untrack/list`. *(done)*
-- **abandon** — `k` → `jj abandon -r <id>` (guarded, confirm on `@`). *(new)*
+- **abandon** — `D` → `jj abandon -r <id>` (guarded, confirm on `@`). *(new)*
 - **git pull** — sync `u`/`U` → `jj git fetch` then `jj rebase -b @ -d trunk()`. *(new)*
 - **file untrack** — `K` on a file node → `jj file untrack <path>` (ignore hint). *(new)*
 

@@ -1,4 +1,4 @@
-# VHS tape: the abandon transient (k) with sticky args, from the log. Catppuccin
+# VHS tape: the abandon transient (D) with sticky args, from the log. Catppuccin
 # Mocha; needs CURATE_COLORSCHEME_PATH.
 Output abandonmenu.gif
 Set Theme "Catppuccin Mocha"
@@ -16,7 +16,7 @@ Show
 Sleep 700ms
 Type "j"
 Sleep 300ms
-Type "k"
+Type "D"
 Sleep 1200ms
 Screenshot abandon-menu.png
 Sleep 400ms

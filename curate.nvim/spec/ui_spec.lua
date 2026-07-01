@@ -20,6 +20,57 @@ describe("render.row builder", function()
   end)
 end)
 
+describe("render.row builder — spans and line background", function()
+  it("re-bases pre-computed spans onto the row's current column", function()
+    local spans = { { "@keyword", 0, 5 }, { "@variable", 6, 9 } }
+    local r = render.row():add("    + ", "CurateAdded"):add_spans("local abc", spans):done()
+    assert.equals("    + local abc", r[1])
+    -- gutter span, then the two rebased spans (offset by 6 bytes)
+    assert.equals("CurateAdded", r[2][1][1])
+    assert.same({ "@keyword", 6, 11 }, r[2][2])
+    assert.same({ "@variable", 12, 15 }, r[2][3])
+  end)
+
+  it("carries a line background as the row's third element", function()
+    local r = render.row():add("x", "CurateAdded"):line_bg("CurateAddedLine"):done()
+    assert.equals("CurateAddedLine", r[3])
+    -- absent by default
+    assert.is_nil(render.row():add("x"):done()[3])
+  end)
+end)
+
+describe("syntax spans", function()
+  local syntax = require("curate.ui.syntax")
+
+  it("resolves a treesitter language from a file path", function()
+    -- lua ships with Neovim; if a build lacks it, skip rather than fail.
+    if not pcall(vim.treesitter.language.add, "lua") then
+      return
+    end
+    assert.equals("lua", syntax.lang_for("router.lua"))
+    assert.is_nil(syntax.lang_for("notes.unknownext"))
+  end)
+
+  it("emits foreground capture spans for a line of code", function()
+    if not pcall(vim.treesitter.language.add, "lua") then
+      return
+    end
+    local spans = syntax.spans("local x = 1", "lua")
+    assert.is_true(#spans > 0)
+    local groups = {}
+    for _, s in ipairs(spans) do
+      groups[s[1]] = true
+      assert.is_true(s[3] > s[2]) -- non-empty range
+    end
+    assert.is_true(groups["@keyword"] ~= nil) -- `local`
+  end)
+
+  it("returns nothing for an unknown language (caller falls back)", function()
+    assert.same({}, syntax.spans("whatever", nil))
+    assert.same({}, syntax.spans("", "lua"))
+  end)
+end)
+
 describe("tree", function()
   local function file(path, nhunks)
     local hunks = {}

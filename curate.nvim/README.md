@@ -55,6 +55,12 @@ state text (added/removed/conflict/selected) links to the **foreground** groups
 `Added` / `Removed` / `DiagnosticError`, so it stays legible under themes that
 make `DiffAdd`/`DiffDelete` background-only.
 
+The diff- and merge-editors show **syntax highlighting and the diff at the same
+time**: code is treesitter-highlighted on the foreground while add/remove sits on
+the line background (`CurateAddedLine`/`CurateRemovedLine`, linked to
+`DiffAdd`/`DiffDelete`). Files whose language has no parser installed fall back
+to flat green/red. Disable with `require("curate").setup({ diff_syntax = false })`.
+
 Override any group to taste — `default = true` means your definition always wins:
 
 ```lua
@@ -65,8 +71,9 @@ vim.api.nvim_set_hl(0, "CurateCurrent", { link = "Statement" })
 Groups: `CurateChangeId` `CurateCommitId` `CurateAuthor` `CurateAgo`
 `CurateSubject` `CurateCurrent` `CurateImmutable` `CurateConflict`
 `CurateDivergent` `CurateEmpty` `CurateFile` `CurateHunkHeader` `CurateAdded`
-`CurateRemoved` `CurateContext` `CurateSelected` `CurateDeselected`
-`CurateRebaseDest` `CurateOpCurrent` `CurateOpId` `CurateHint` `CurateGraph`.
+`CurateRemoved` `CurateAddedLine` `CurateRemovedLine` `CurateContext`
+`CurateSelected` `CurateDeselected` `CurateRebaseDest` `CurateOpCurrent`
+`CurateOpId` `CurateHint` `CurateGraph`.
 
 ## Keymap (the contract)
 

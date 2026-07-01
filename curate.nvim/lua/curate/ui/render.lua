@@ -10,11 +10,13 @@ local M = {}
 ---@class curate.Row
 ---@field [1] string          text
 ---@field [2]? curate.Span[]  highlights
+---@field [3]? string         line background hl_group (whole row, incl. EOL)
 
 --- A tiny builder so views compose a row left-to-right without counting columns.
 ---@class curate.RowBuilder
 ---@field text string
 ---@field spans curate.Span[]
+---@field line_hl string|nil
 local Builder = {}
 Builder.__index = Builder
 
@@ -37,10 +39,35 @@ function Builder:add(s, hl)
   return self
 end
 
+--- Append a chunk carrying pre-computed highlight spans (byte cols relative to
+--- the chunk), e.g. treesitter output from ui/syntax. Spans are re-based onto
+--- the row's current column so callers never count columns themselves.
+---@param s string
+---@param spans curate.Span[]|nil
+---@return curate.RowBuilder
+function Builder:add_spans(s, spans)
+  s = s or ""
+  local base = #self.text
+  for _, sp in ipairs(spans or {}) do
+    self.spans[#self.spans + 1] = { sp[1], base + sp[2], base + sp[3] }
+  end
+  self.text = self.text .. s
+  return self
+end
+
+--- Tint the whole row (including past EOL) with a background hl_group. Used for
+--- diff add/remove lines so foreground syntax spans stay legible on top.
+---@param hl string|nil
+---@return curate.RowBuilder
+function Builder:line_bg(hl)
+  self.line_hl = hl
+  return self
+end
+
 --- Materialise into a `curate.Row`.
 ---@return curate.Row
 function Builder:done()
-  return { self.text, self.spans }
+  return { self.text, self.spans, self.line_hl }
 end
 
 --- Flush rows into a view's buffer + namespace in one pass.
@@ -58,6 +85,14 @@ function M.flush(v, rows)
   vim.api.nvim_buf_set_lines(v.buf, 0, -1, false, text)
   vim.api.nvim_buf_clear_namespace(v.buf, v.ns, 0, -1)
   for i, r in ipairs(rows) do
+    if r[3] then
+      -- Line background first (low, implicit priority) so per-cell foreground
+      -- spans render on top; bg + fg merge per attribute.
+      vim.api.nvim_buf_set_extmark(v.buf, v.ns, i - 1, 0, {
+        line_hl_group = r[3],
+        hl_eol = true,
+      })
+    end
     for _, s in ipairs(r[2] or {}) do
       vim.api.nvim_buf_set_extmark(v.buf, v.ns, i - 1, s[2], {
         end_col = s[3],

@@ -7,8 +7,30 @@
 -- cancels. (§3 of the spec, §G of the architecture.)
 
 local render = require("curate.ui.render")
+local syntax = require("curate.ui.syntax")
+local config = require("curate.config")
 local hunks_engine = require("curate.diffeditor.hunks")
 local fs = require("curate.diffeditor.fs")
+
+--- Build one diff-content row: a colored +/- gutter, then the code either
+--- syntax-highlighted with an add/remove line tint, or flat-colored as a
+--- fallback (no treesitter parser, or the feature disabled).
+---@param gutter string     e.g. "    + "
+---@param code string
+---@param lang string|nil
+---@param sign_hl string    fg group for the gutter sign (CurateAdded/CurateRemoved)
+---@param line_hl string    bg group for the whole row (CurateAddedLine/…)
+---@return curate.Row
+local function diff_row(gutter, code, lang, sign_hl, line_hl)
+  local r = render.row():add(gutter, sign_hl)
+  local spans = lang and syntax.spans(code, lang) or {}
+  if #spans > 0 then
+    r:add_spans(code, spans):line_bg(line_hl)
+  else
+    r:add(code, sign_hl) -- no parser: keep the flat green/red line
+  end
+  return r:done()
+end
 
 local M = {}
 
@@ -166,6 +188,7 @@ function DiffEditor:render()
     push(fr:done(), { file_index = fi })
 
     if not f.binary then
+      local lang = config.get("diff_syntax") and syntax.lang_for(f.path) or nil
       for hi, h in ipairs(f.hunks) do
         local mark = f.selected[hi] and "[x]" or "[ ]"
         local hl = f.selected[hi] and "CurateSelected" or "CurateDeselected"
@@ -182,13 +205,13 @@ function DiffEditor:render()
         )
         for _, l in ipairs(h.old_lines) do
           push(
-            render.row():add("    - " .. l, "CurateRemoved"):done(),
+            diff_row("    - ", l, lang, "CurateRemoved", "CurateRemovedLine"),
             { file_index = fi, hunk_index = hi }
           )
         end
         for _, l in ipairs(h.new_lines) do
           push(
-            render.row():add("    + " .. l, "CurateAdded"):done(),
+            diff_row("    + ", l, lang, "CurateAdded", "CurateAddedLine"),
             { file_index = fi, hunk_index = hi }
           )
         end
@@ -206,6 +229,13 @@ function DiffEditor:render()
   vim.api.nvim_buf_set_lines(self.buf, 0, -1, false, text)
   vim.api.nvim_buf_clear_namespace(self.buf, self.ns, 0, -1)
   for i, r in ipairs(rows) do
+    if r[3] then
+      -- Whole-row add/remove tint underneath the foreground syntax spans.
+      vim.api.nvim_buf_set_extmark(self.buf, self.ns, i - 1, 0, {
+        line_hl_group = r[3],
+        hl_eol = true,
+      })
+    end
     for _, s in ipairs(r[2] or {}) do
       vim.api.nvim_buf_set_extmark(
         self.buf,

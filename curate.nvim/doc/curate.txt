@@ -115,14 +115,19 @@ and re-links automatically on |ColorScheme|. Diff/state text groups link to the
 foreground groups Added / Removed / DiagnosticError so they stay legible under
 themes that make DiffAdd / DiffDelete background-only.
 
+The diff- and merge-editors render syntax highlighting and the diff together:
+code is treesitter-highlighted on the foreground while add/remove lives on the
+line background (CurateAddedLine / CurateRemovedLine). Languages with no parser
+fall back to flat green/red. Toggle with the `diff_syntax` option (default true).
+
 Override any group; because the links use {default=true}, yours always wins: >
     vim.api.nvim_set_hl(0, "CurateChangeId", { fg = "#f5c2e7", bold = true })
 <
 Groups: CurateChangeId CurateCommitId CurateAuthor CurateAgo CurateSubject
 CurateCurrent CurateImmutable CurateConflict CurateDivergent CurateEmpty
-CurateFile CurateHunkHeader CurateAdded CurateRemoved CurateContext
-CurateSelected CurateDeselected CurateRebaseDest CurateOpCurrent CurateOpId
-CurateHint CurateGraph.
+CurateFile CurateHunkHeader CurateAdded CurateRemoved CurateAddedLine
+CurateRemovedLine CurateContext CurateSelected CurateDeselected CurateRebaseDest
+CurateOpCurrent CurateOpId CurateHint CurateGraph.
 
 ==============================================================================
 8. HEALTH                                                        *curate-health*

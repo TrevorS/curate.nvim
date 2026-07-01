@@ -23,6 +23,11 @@ local links = {
   CurateHunkHeader = "Function",
   CurateAdded = "Added", -- + diff lines, +N counts (green fg)
   CurateRemoved = "Removed", -- - diff lines, -N counts (red fg)
+  -- Line-background tints for diff rows that also carry syntax highlighting:
+  -- DiffAdd/DiffDelete are the background-based groups (bg-only under modern
+  -- themes), so treesitter foreground colors stay legible on top.
+  CurateAddedLine = "DiffAdd",
+  CurateRemovedLine = "DiffDelete",
   CurateContext = "Comment",
   CurateSelected = "Added", -- chosen side / selected hunk (green fg)
   CurateDeselected = "Comment",

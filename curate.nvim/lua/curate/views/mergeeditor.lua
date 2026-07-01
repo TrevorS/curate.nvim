@@ -6,10 +6,34 @@
 -- remote-wait handshake as the diff-editor — only the buffer differs.
 
 local render = require("curate.ui.render")
+local syntax = require("curate.ui.syntax")
+local config = require("curate.config")
 local merge3 = require("curate.diffeditor.merge3")
 local fs = require("curate.diffeditor.fs")
 
 local M = {}
+
+--- A merge content row: prefix gutter, then code either syntax-highlighted
+--- (optionally over an add/remove line tint) or flat-colored as a fallback.
+---@param prefix string
+---@param code string
+---@param lang string|nil
+---@param fallback_hl string    used for the code when no treesitter spans exist
+---@param line_hl string|nil    optional whole-row background tint
+---@return curate.Row
+local function code_row(prefix, code, lang, fallback_hl, line_hl)
+  local r = render.row():add(prefix, "CurateHint")
+  local spans = lang and syntax.spans(code, lang) or {}
+  if #spans > 0 then
+    r:add_spans(code, spans)
+    if line_hl then
+      r:line_bg(line_hl)
+    end
+  else
+    r:add(code, fallback_hl)
+  end
+  return r:done()
+end
 
 -- Cycle order for a conflict's choice (b = base, the "discard both" option, is
 -- reachable via its own key rather than the cycle).
@@ -106,14 +130,12 @@ function MergeEditor:render()
   )
   push(render.row():add("", nil):done(), nil)
 
+  local lang = config.get("diff_syntax") and syntax.lang_for(self.name) or nil
+
   for si, s in ipairs(self.segs) do
-    if s.kind == "stable" then
+    if s.kind == "stable" or s.kind == "auto" then
       for _, l in ipairs(s.lines) do
-        push(render.row():add("  " .. l, "CurateContext"):done(), nil)
-      end
-    elseif s.kind == "auto" then
-      for _, l in ipairs(s.lines) do
-        push(render.row():add("  " .. l, "CurateContext"):done(), nil)
+        push(code_row("  ", l, lang, "CurateContext", nil), nil)
       end
     elseif s.kind == "conflict" then
       local picked = s.choice and ("✓ " .. s.choice) or "● choose a side"
@@ -125,17 +147,17 @@ function MergeEditor:render()
           :done(),
         si
       )
-      local function block(label, lines, hl, key)
+      local function block(label, lines, fallback_hl, line_hl, key)
         local tag = #lines == 0 and " (empty)" or ""
         push(render.row():add("│ " .. key .. " " .. label .. tag, "CurateHint"):done(), si)
         for _, l in ipairs(lines) do
-          push(render.row():add("│   " .. l, hl):done(), si)
+          push(code_row("│   ", l, lang, fallback_hl, line_hl), si)
         end
       end
       -- diff3 order: left (ours) · base (ancestor) · right (theirs).
-      block("left", s.left, "CurateAdded", "l")
-      block("base", s.base, "CurateContext", "b")
-      block("right", s.right, "CurateRemoved", "r")
+      block("left", s.left, "CurateAdded", "CurateAddedLine", "l")
+      block("base", s.base, "CurateContext", nil, "b")
+      block("right", s.right, "CurateRemoved", "CurateRemovedLine", "r")
       push(render.row():add("└─", "CurateHunkHeader"):done(), si)
     end
   end
@@ -148,6 +170,12 @@ function MergeEditor:render()
   vim.api.nvim_buf_set_lines(self.buf, 0, -1, false, text)
   vim.api.nvim_buf_clear_namespace(self.buf, self.ns, 0, -1)
   for i, r in ipairs(rows) do
+    if r[3] then
+      vim.api.nvim_buf_set_extmark(self.buf, self.ns, i - 1, 0, {
+        line_hl_group = r[3],
+        hl_eol = true,
+      })
+    end
     for _, sp in ipairs(r[2] or {}) do
       vim.api.nvim_buf_set_extmark(
         self.buf,

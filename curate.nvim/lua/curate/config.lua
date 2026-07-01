@@ -14,6 +14,10 @@ local defaults = {
   confirm_immutable = true,
   -- Name jj sees for our diff-editor (the merge-tool key it invokes).
   diff_editor_name = "curate",
+  -- Treesitter-highlight code in the diff/merge editors (add/remove moves to a
+  -- line-background tint so syntax colors stay legible). Falls back to flat
+  -- green/red when no parser is installed for the language.
+  diff_syntax = true,
   -- Enable which-key integration if the plugin is installed.
   which_key = true,
 }
@@ -29,6 +33,7 @@ function M.apply(opts)
     log_revset = { opts.log_revset, "string", true },
     refresh_debounce = { opts.refresh_debounce, "number", true },
     confirm_immutable = { opts.confirm_immutable, "boolean", true },
+    diff_syntax = { opts.diff_syntax, "boolean", true },
   })
   M.options = vim.tbl_deep_extend("force", vim.deepcopy(defaults), opts)
   return M.options

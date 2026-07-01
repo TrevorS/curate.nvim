@@ -119,8 +119,10 @@ The diff- and merge-editors render syntax highlighting and the diff together:
 code is treesitter-highlighted on the foreground while add/remove lives on the
 line background (CurateAddedLine / CurateRemovedLine). Each side's file is parsed
 as a whole and highlights are projected onto the rows by line number, so
-multi-line strings/comments colorize correctly. Languages with no parser fall
-back to flat green/red. Toggle with the `diff_syntax` option (default true).
+multi-line strings/comments colorize correctly and injected languages (vimscript
+in vim.cmd[[...]], fenced code in markdown, …) render in their own language.
+Languages with no parser fall back to flat green/red. Toggle with the
+`diff_syntax` option (default true).
 
 Override any group; because the links use {default=true}, yours always wins: >
     vim.api.nvim_set_hl(0, "CurateChangeId", { fg = "#f5c2e7", bold = true })

@@ -91,6 +91,25 @@ describe("syntax spans", function()
     local alone = syntax.spans("the middle line", "lua")
     assert.is_false(alone[1] and alone[1][1] == "@string")
   end)
+
+  it("highlights injected languages in their own language", function()
+    if
+      not (pcall(vim.treesitter.language.add, "lua") and pcall(vim.treesitter.language.add, "vim"))
+    then
+      return
+    end
+    -- Neovim ships a lua injection that treats vim.cmd([[ ... ]]) as vimscript.
+    local by_row = syntax.buffer_spans({ "vim.cmd([[", "  set number", "]])" }, "lua")
+    local function has(row, group)
+      for _, sp in ipairs(by_row[row] or {}) do
+        if sp[1] == group then
+          return true
+        end
+      end
+      return false
+    end
+    assert.is_true(has(2, "@keyword")) -- `set` is a vim keyword, not a lua string
+  end)
 end)
 
 describe("tree", function()

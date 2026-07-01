@@ -45,9 +45,11 @@ end
 
 --- Highlight spans for a whole file, parsed as one tree so multi-line
 --- constructs (block strings/comments, and every node's surrounding context)
---- resolve correctly — this is the "proper", not per-line, path. Multi-line
---- nodes are split into one span per row they cover. Returns a 1-based row ->
---- spans map so a caller can project them onto its own rows by line number.
+--- resolve correctly — this is the "proper", not per-line, path. Injected
+--- languages are highlighted in their own language too (vimscript in
+--- `vim.cmd[[...]]`, fenced code in markdown, …). Multi-line nodes are split
+--- into one span per row they cover. Returns a 1-based row -> spans map so a
+--- caller can project them onto its own rows by line number.
 ---@param lines string[]
 ---@param lang string|nil
 ---@return table<integer, curate.Span[]>  row -> { {group, start_col, end_col}, ... } (byte cols)
@@ -60,14 +62,8 @@ function M.buffer_spans(lines, lang)
   if not ok or not parser then
     return {}
   end
-  local query = highlights_query(lang)
-  if not query then
-    return {}
-  end
-  local tree = (parser:parse() or {})[1]
-  if not tree then
-    return {}
-  end
+  pcall(parser.parse, parser, true) -- parse WITH injections
+
   local by_row = {}
   -- Captures arrive in query order; more specific captures come later, so we
   -- keep them in order and let the caller's later extmarks win per attribute.
@@ -77,20 +73,41 @@ function M.buffer_spans(lines, lang)
       by_row[row][#by_row[row] + 1] = { group, s, e }
     end
   end
-  for id, node in query:iter_captures(tree:root(), src, 0, -1) do
-    local group = "@" .. query.captures[id]
-    local srow, scol, erow, ecol = node:range()
-    if srow == erow then
-      push(srow + 1, group, scol, ecol)
-    else
-      -- e.g. a [[ long string ]] or block comment: paint each covered row.
-      for r = srow, erow do
-        local s = (r == srow) and scol or 0
-        local e = (r == erow) and ecol or #(lines[r + 1] or "")
-        push(r + 1, group, s, e)
+  local function collect(tree, tlang)
+    local query = highlights_query(tlang)
+    if not query then
+      return
+    end
+    for id, node in query:iter_captures(tree:root(), src, 0, -1) do
+      local group = "@" .. query.captures[id]
+      local srow, scol, erow, ecol = node:range()
+      if srow == erow then
+        push(srow + 1, group, scol, ecol)
+      else
+        -- e.g. a [[ long string ]] or block comment: paint each covered row.
+        for r = srow, erow do
+          local s = (r == srow) and scol or 0
+          local e = (r == erow) and ecol or #(lines[r + 1] or "")
+          push(r + 1, group, s, e)
+        end
       end
     end
   end
+  local function member(lt, method)
+    local okm, v = pcall(lt[method], lt)
+    return okm and v or {}
+  end
+  -- Primary language first, then injected children — children lay later so
+  -- their language wins on the overlapping host node (vim over the lua string).
+  local function walk(lt)
+    for _, tree in pairs(member(lt, "trees")) do
+      pcall(collect, tree, lt:lang())
+    end
+    for _, child in pairs(member(lt, "children")) do
+      walk(child)
+    end
+  end
+  pcall(walk, parser)
   return by_row
 end
 

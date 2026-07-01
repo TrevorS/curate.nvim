@@ -60,8 +60,10 @@ time**: code is treesitter-highlighted on the foreground while add/remove sits o
 the line background (`CurateAddedLine`/`CurateRemovedLine`, linked to
 `DiffAdd`/`DiffDelete`). Each side's file is parsed as a whole and the
 highlights are projected onto the diff rows by line number, so multi-line
-strings and comments colorize correctly (not the broken per-line way). Files
-whose language has no parser installed fall back to flat green/red. Disable with
+strings and comments colorize correctly (not the broken per-line way), and
+**injected languages** render in their own language — vimscript inside
+`vim.cmd[[...]]`, fenced code blocks in Markdown, and so on. Files whose
+language has no parser installed fall back to flat green/red. Disable with
 `require("curate").setup({ diff_syntax = false })`.
 
 Override any group to taste — `default = true` means your definition always wins:

@@ -30,6 +30,18 @@ describe("hunks.compute", function()
     assert.same({ "d" }, h[2].old_lines)
   end)
 
+  it("records new_start so added lines map back to new-file line numbers", function()
+    -- old: a c e   new: a b1 b2 c D e  → insert before c, then modify e's slot
+    local h = hunks.compute(lines("a\nc\ne"), lines("a\nb1\nb2\nc\nD\ne"))
+    assert.equals(2, #h)
+    -- hunk 1: pure insertion of b1,b2 at new line 2
+    assert.equals(2, h[1].new_start)
+    assert.same({ "b1", "b2" }, h[1].new_lines)
+    -- hunk 2: c is unchanged, so the second change is D at new line 5
+    assert.equals(5, h[2].new_start)
+    assert.same({ "D" }, h[2].new_lines)
+  end)
+
   it("handles added file (empty old)", function()
     local h = hunks.compute({}, lines("x\ny"))
     assert.equals(1, #h)

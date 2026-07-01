@@ -51,6 +51,37 @@ function M.check()
   else
     h.info("which-key.nvim not found (optional)")
   end
+
+  -- treesitter parsers drive syntax + word highlighting in the diff/merge editors
+  if not require("curate.config").get("diff_syntax") then
+    h.info("diff syntax highlighting disabled (diff_syntax = false)")
+  else
+    local common = {
+      "lua",
+      "vim",
+      "markdown",
+      "python",
+      "javascript",
+      "typescript",
+      "go",
+      "rust",
+      "bash",
+      "json",
+    }
+    local found = {}
+    for _, lang in ipairs(common) do
+      if pcall(vim.treesitter.language.add, lang) then
+        found[#found + 1] = lang
+      end
+    end
+    if #found > 0 then
+      h.ok("treesitter parsers: " .. table.concat(found, ", "))
+    else
+      h.warn(
+        "no treesitter parsers found — diffs fall back to flat green/red (e.g. :TSInstall lua)"
+      )
+    end
+  end
 end
 
 return M

@@ -1,13 +1,13 @@
 # VHS tape: the curate.nvim revset workbench (P7) — live-recomputing query.
 Output revset.gif
-Set Theme "TokyoNight"
+Set Theme "Catppuccin Mocha"
 Set FontSize 16
 Set Width 1200
 Set Height 760
 Set Padding 14
 
 Hide
-Type "export REPO=$(bash $CURATE_ROOT/scripts/demo-repo.sh); cd $REPO; export HOME=$REPO/.home" Enter
+Type "export CURATE_COLORSCHEME=catppuccin; export REPO=$(bash $CURATE_ROOT/scripts/demo-repo.sh); cd $REPO; export HOME=$REPO/.home" Enter
 Type "nvim -u $CURATE_ROOT/scripts/nvim-demo-init.lua -c 'Curate revset'" Enter
 Sleep 2s
 Show

@@ -9,6 +9,7 @@ local M = {}
 ---@class curate.EditHunk
 ---@field old_start integer   1-based index of first old line in the hunk
 ---@field old_count integer   number of old lines replaced (0 = pure insertion)
+---@field new_start integer   1-based index of first new line in the hunk
 ---@field old_lines string[]  the replaced old lines
 ---@field new_lines string[]  the replacement new lines
 ---@field index integer       position in the file's hunk list (for selection)
@@ -81,6 +82,7 @@ function M.compute(old, new)
       hunks[#hunks + 1] = {
         old_start = oi,
         old_count = ma - oi,
+        new_start = ni,
         old_lines = old_lines,
         new_lines = new_lines,
         index = #hunks + 1,

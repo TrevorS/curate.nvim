@@ -9,7 +9,8 @@ CONTENTS                                                       *curate-contents*
   4. The loop ................ |curate-loop|
   5. Keymaps ................. |curate-keymaps|
   6. The diff-editor ......... |curate-diffeditor|
-  7. Health .................. |curate-health|
+  7. Highlights .............. |curate-highlights|
+  8. Health .................. |curate-health|
 
 ==============================================================================
 1. INTRODUCTION                                                   *curate-intro*
@@ -106,7 +107,39 @@ $output; the 3-way buffer lets you pick a side per conflict and writes the
 resolution into $output. One RPC mechanism, two editors. |curate-keymaps|
 
 ==============================================================================
-7. HEALTH                                                        *curate-health*
+7. HIGHLIGHTS                                                *curate-highlights*
+
+curate defines its highlight groups as |default| links to standard groups, so
+it inherits whatever colorscheme you run (Catppuccin, Tokyo Night, gruvbox, …)
+and re-links automatically on |ColorScheme|. Diff/state text groups link to the
+foreground groups Added / Removed / DiagnosticError so they stay legible under
+themes that make DiffAdd / DiffDelete background-only.
+
+The diff- and merge-editors render syntax highlighting and the diff together:
+code is treesitter-highlighted on the foreground while add/remove lives on the
+line background (CurateAddedLine / CurateRemovedLine). Each side's file is parsed
+as a whole and highlights are projected onto the rows by line number, so
+multi-line strings/comments colorize correctly and injected languages (vimscript
+in vim.cmd[[...]], fenced code in markdown, …) render in their own language.
+Languages with no parser fall back to flat green/red. Toggle with the
+`diff_syntax` option (default true).
+
+On a modified line the diff-editor also emphasises just the tokens that changed
+(intra-line word diff, CurateAddedText / CurateRemovedText). Toggle with the
+`diff_word` option (default true).
+
+Override any group; because the links use {default=true}, yours always wins: >
+    vim.api.nvim_set_hl(0, "CurateChangeId", { fg = "#f5c2e7", bold = true })
+<
+Groups: CurateChangeId CurateCommitId CurateAuthor CurateAgo CurateSubject
+CurateCurrent CurateImmutable CurateConflict CurateDivergent CurateEmpty
+CurateFile CurateHunkHeader CurateAdded CurateRemoved CurateAddedLine
+CurateRemovedLine CurateAddedText CurateRemovedText CurateContext CurateSelected
+CurateDeselected CurateRebaseDest CurateOpCurrent CurateOpId CurateHint
+CurateGraph.
+
+==============================================================================
+8. HEALTH                                                        *curate-health*
 
 :checkhealth curate
     Verifies jj on PATH and its version, the RPC server (servername), the

@@ -6,10 +6,44 @@
 -- remote-wait handshake as the diff-editor — only the buffer differs.
 
 local render = require("curate.ui.render")
+local syntax = require("curate.ui.syntax")
+local worddiff = require("curate.diffeditor.worddiff")
+local config = require("curate.config")
 local merge3 = require("curate.diffeditor.merge3")
 local fs = require("curate.diffeditor.fs")
 
 local M = {}
+
+--- A merge content row: prefix gutter, then code either syntax-highlighted
+--- (optionally over an add/remove line tint) or flat-colored as a fallback.
+--- `spans` are the treesitter highlights for this line; `emph` are word-diff
+--- ranges (byte cols) to emphasise on top with `emph_hl`.
+---@param prefix string
+---@param code string
+---@param spans curate.Span[]|nil
+---@param fallback_hl string    used for the code when no treesitter spans exist
+---@param line_hl string|nil    optional whole-row background tint
+---@param emph_hl string|nil    bg group for changed tokens
+---@param emph integer[][]|nil  {scol, ecol} byte ranges within `code`
+---@return curate.Row
+local function code_row(prefix, code, spans, fallback_hl, line_hl, emph_hl, emph)
+  local r = render.row():add(prefix, "CurateHint")
+  if spans and #spans > 0 then
+    r:add_spans(code, spans)
+    if line_hl then
+      r:line_bg(line_hl)
+    end
+  else
+    r:add(code, fallback_hl)
+  end
+  if emph then
+    local base = #prefix
+    for _, rng in ipairs(emph) do
+      r:mark(base + rng[1], base + rng[2], emph_hl)
+    end
+  end
+  return r:done()
+end
 
 -- Cycle order for a conflict's choice (b = base, the "discard both" option, is
 -- reachable via its own key rather than the cycle).
@@ -106,14 +140,41 @@ function MergeEditor:render()
   )
   push(render.row():add("", nil):done(), nil)
 
+  local lang = config.get("diff_syntax") and syntax.lang_for(self.name) or nil
+
+  -- Reconstruct each full side (segments partition each source file in order),
+  -- recording every segment's 0-based start per side, so treesitter parses the
+  -- whole file once and each displayed line maps back to real context.
+  local left_full, base_full, right_full = {}, {}, {}
+  local lstart, bstart, rstart = {}, {}, {}
+  for si, s in ipairs(self.segs) do
+    lstart[si], bstart[si], rstart[si] = #left_full, #base_full, #right_full
+    if s.kind == "stable" then
+      local anchor = s.lines[1]
+      left_full[#left_full + 1], base_full[#base_full + 1], right_full[#right_full + 1] =
+        anchor, anchor, anchor
+    else
+      vim.list_extend(left_full, s.left or {})
+      vim.list_extend(base_full, s.base or {})
+      vim.list_extend(right_full, s.right or {})
+    end
+  end
+  local left_hl = lang and syntax.buffer_spans(left_full, lang) or {}
+  local base_hl = lang and syntax.buffer_spans(base_full, lang) or {}
+  local right_hl = lang and syntax.buffer_spans(right_full, lang) or {}
+
+  local word = config.get("diff_word")
   for si, s in ipairs(self.segs) do
     if s.kind == "stable" then
-      for _, l in ipairs(s.lines) do
-        push(render.row():add("  " .. l, "CurateContext"):done(), nil)
-      end
+      push(code_row("  ", s.lines[1], base_hl[bstart[si] + 1], "CurateContext"), nil)
     elseif s.kind == "auto" then
-      for _, l in ipairs(s.lines) do
-        push(render.row():add("  " .. l, "CurateContext"):done(), nil)
+      -- Auto chunks display the winning side; highlight from that side's file.
+      local hl, start = right_hl, rstart[si]
+      if s.side ~= "right" then -- "left" or "both"
+        hl, start = left_hl, lstart[si]
+      end
+      for k, l in ipairs(s.lines) do
+        push(code_row("  ", l, hl[start + k], "CurateContext"), nil)
       end
     elseif s.kind == "conflict" then
       local picked = s.choice and ("✓ " .. s.choice) or "● choose a side"
@@ -125,17 +186,51 @@ function MergeEditor:render()
           :done(),
         si
       )
-      local function block(label, lines, hl, key)
-        local tag = #lines == 0 and " (empty)" or ""
-        push(render.row():add("│ " .. key .. " " .. label .. tag, "CurateHint"):done(), si)
-        for _, l in ipairs(lines) do
-          push(render.row():add("│   " .. l, hl):done(), si)
+      -- Emphasise each side's edits relative to the base (ancestor).
+      local left_emph = word and select(2, worddiff.ranges(s.base, s.left)) or {}
+      local right_emph = word and select(2, worddiff.ranges(s.base, s.right)) or {}
+      local function block(b)
+        local tag = #b.lines == 0 and " (empty)" or ""
+        push(render.row():add("│ " .. b.key .. " " .. b.label .. tag, "CurateHint"):done(), si)
+        for k, l in ipairs(b.lines) do
+          local spans = b.hl[b.start + k]
+          push(
+            code_row("│   ", l, spans, b.fallback, b.line_hl, b.emph_hl, b.emph and b.emph[k]),
+            si
+          )
         end
       end
       -- diff3 order: left (ours) · base (ancestor) · right (theirs).
-      block("left", s.left, "CurateAdded", "l")
-      block("base", s.base, "CurateContext", "b")
-      block("right", s.right, "CurateRemoved", "r")
+      block({
+        key = "l",
+        label = "left",
+        lines = s.left,
+        hl = left_hl,
+        start = lstart[si],
+        fallback = "CurateAdded",
+        line_hl = "CurateAddedLine",
+        emph_hl = "CurateAddedText",
+        emph = left_emph,
+      })
+      block({
+        key = "b",
+        label = "base",
+        lines = s.base,
+        hl = base_hl,
+        start = bstart[si],
+        fallback = "CurateContext",
+      })
+      block({
+        key = "r",
+        label = "right",
+        lines = s.right,
+        hl = right_hl,
+        start = rstart[si],
+        fallback = "CurateRemoved",
+        line_hl = "CurateRemovedLine",
+        emph_hl = "CurateRemovedText",
+        emph = right_emph,
+      })
       push(render.row():add("└─", "CurateHunkHeader"):done(), si)
     end
   end
@@ -148,6 +243,12 @@ function MergeEditor:render()
   vim.api.nvim_buf_set_lines(self.buf, 0, -1, false, text)
   vim.api.nvim_buf_clear_namespace(self.buf, self.ns, 0, -1)
   for i, r in ipairs(rows) do
+    if r[3] then
+      vim.api.nvim_buf_set_extmark(self.buf, self.ns, i - 1, 0, {
+        line_hl_group = r[3],
+        hl_eol = true,
+      })
+    end
     for _, sp in ipairs(r[2] or {}) do
       vim.api.nvim_buf_set_extmark(
         self.buf,

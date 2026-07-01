@@ -25,6 +25,14 @@ The status home, the diff-editor (split mode), the op-log time machine, the 3-wa
 ![merge-editor](../screenshots/mergeeditor-open.png)
 ![revset workbench](../screenshots/revset-open.png)
 
+### Theming & rich diffs
+
+curate inherits your colorscheme, and the diff-editor shows treesitter syntax,
+injected languages, and intra-line word emphasis together (Catppuccin Mocha):
+
+![rich diff: syntax + word-level emphasis](../screenshots/richdiff.png)
+![injections: markdown, lua, and vimscript in one diff](../screenshots/injections.png)
+
 ## Requirements
 
 - Neovim **0.11+** (developed against 0.12)
@@ -45,6 +53,45 @@ With [lazy.nvim](https://github.com/folke/lazy.nvim):
 ```
 
 Then `:Curate` (or `:Curate status`) opens the home. Run `:checkhealth curate` to verify jj, the RPC server, and the diff-editor shim.
+
+## Highlights (inherits your colorscheme)
+
+curate defines its highlight groups as `default` links to standard groups, so it
+adopts whatever colorscheme you run — Catppuccin, Tokyo Night, gruvbox, etc. —
+with no extra config, and re-links automatically on `:colorscheme`. Diff and
+state text (added/removed/conflict/selected) links to the **foreground** groups
+`Added` / `Removed` / `DiagnosticError`, so it stays legible under themes that
+make `DiffAdd`/`DiffDelete` background-only.
+
+The diff- and merge-editors show **syntax highlighting and the diff at the same
+time**: code is treesitter-highlighted on the foreground while add/remove sits on
+the line background (`CurateAddedLine`/`CurateRemovedLine`, linked to
+`DiffAdd`/`DiffDelete`). Each side's file is parsed as a whole and the
+highlights are projected onto the diff rows by line number, so multi-line
+strings and comments colorize correctly (not the broken per-line way), and
+**injected languages** render in their own language — vimscript inside
+`vim.cmd[[...]]`, fenced code blocks in Markdown, and so on. Files whose
+language has no parser installed fall back to flat green/red. Disable with
+`require("curate").setup({ diff_syntax = false })`.
+
+On a **modified** line the diff-editor also emphasises just the tokens that
+actually changed (intra-line word diff, `CurateAddedText`/`CurateRemovedText`
+→ `DiffText`) — a one-word rename lights up that word, not the whole line.
+Disable with `diff_word = false`.
+
+Override any group to taste — `default = true` means your definition always wins:
+
+```lua
+vim.api.nvim_set_hl(0, "CurateChangeId", { fg = "#f5c2e7", bold = true })
+vim.api.nvim_set_hl(0, "CurateCurrent", { link = "Statement" })
+```
+
+Groups: `CurateChangeId` `CurateCommitId` `CurateAuthor` `CurateAgo`
+`CurateSubject` `CurateCurrent` `CurateImmutable` `CurateConflict`
+`CurateDivergent` `CurateEmpty` `CurateFile` `CurateHunkHeader` `CurateAdded`
+`CurateRemoved` `CurateAddedLine` `CurateRemovedLine` `CurateAddedText`
+`CurateRemovedText` `CurateContext` `CurateSelected` `CurateDeselected`
+`CurateRebaseDest` `CurateOpCurrent` `CurateOpId` `CurateHint` `CurateGraph`.
 
 ## Keymap (the contract)
 

@@ -121,7 +121,7 @@ The full roadmap is now shipped; what remains is explicitly out-of-scope (below)
 
 ## ✅ P8 · magit-grade command grammar
 
-- **Delivers:** the net-new everyday verbs — `abandon` (`k`), `pull`
+- **Delivers:** the net-new everyday verbs — `abandon` (`D`), `pull`
   (fetch + rebase, sync `u`/`U`), `file untrack` (`K`) — plus the finished
   sticky-arg toggles in the transient engine and a `push` verb popup (`P`) with
   a `--dry-run` arg, all rows in the one `keymap.lua` registry. (The
@@ -145,7 +145,7 @@ The full roadmap is now shipped; what remains is explicitly out-of-scope (below)
   magit's F/P), `--dry-run` + a `--remote` **value arg** on the push menu (`P`),
   `--skip-emptied`/`--keep-divergent` on the rebase transient (`r`). The
   transient engine gains **value args** (`=thing`, a prompted flag value).
-  Instant rewrites (`s`/`n`/`k`) stay instant on purpose.
+  Instant rewrites (`s`/`n`/`D`) stay instant on purpose.
 - **Gated on:** P8 (the transient engine + push menu).
 - **GATE:** `transient_spec` proves value args contribute `flag value`, compose
   with booleans in item order, clear on empty, and render as `[=val]`; `p9_spec`

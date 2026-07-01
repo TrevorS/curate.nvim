@@ -9,7 +9,7 @@ actions, and whatever you toggle rides along with the action you pick.
 
 > **Scope guardrail.** Only *menus* gain args, and only for flags that are valid
 > for **every** action in that menu (so a toggle can't produce an invalid argv).
-> The instant single-key rewrites (`s` squash, `n` new, `k` abandon) stay
+> The instant single-key rewrites (`s` squash, `n` new, `D` abandon) stay
 > instant — their flags are niche and a popup would tax the 80% path. This is
 > the P8 rule again: a popup only earns its keystroke when the flags do.
 
@@ -124,7 +124,7 @@ One gated commit-set on `claude/curate-sticky-args`, stacked on #4:
 
 ## 7. Out of scope (on purpose)
 
-- Args on the instant rewrites (`s`/`n`/`k`) — the fast path stays fast; revisit
+- Args on the instant rewrites (`s`/`n`/`D`) — the fast path stays fast; revisit
   only if a specific flag proves high-frequency.
 - Persisting arg state across invocations (magit's "set as default") — every
   menu opens with args off; a saved-defaults layer is a separate decision.

@@ -39,4 +39,32 @@ describe("keymap registry", function()
       assert.is_truthy(mod and fn, "should parse " .. a)
     end
   end)
+
+  it("never binds j or k — the up/down motions must survive in list views", function()
+    -- Users navigate every curate list with j/k; a buffer-local map on either
+    -- (with or without nowait) eats the motion. Regression guard for the
+    -- k-as-abandon bug: abandon lives on D.
+    for ft, list in pairs(keymap.maps) do
+      for _, entry in ipairs(list) do
+        assert.is_true(entry[1] ~= "j" and entry[1] ~= "k", ft .. " must not bind " .. entry[1])
+      end
+    end
+  end)
+
+  it("does not nowait a key that prefixes longer mappings (g vs g-/g+)", function()
+    -- With nowait, typing `g` fires refresh instantly and g-/g+ can never
+    -- trigger. install() must disable nowait exactly for such prefix keys.
+    keymap.install()
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.bo[buf].filetype = "curate-oplog" -- fires the FileType autocmd
+    local by = {}
+    for _, m in ipairs(vim.api.nvim_buf_get_keymap(buf, "n")) do
+      by[m.lhs] = m
+    end
+    assert.is_truthy(by["g-"], "g- must be mapped in the op-log")
+    assert.equals(0, by["g"].nowait, "g must wait so g-/g+ stay reachable")
+    assert.equals(1, by["g-"].nowait, "leaf keys stay nowait")
+    assert.equals(1, by["q"].nowait, "non-prefix keys stay nowait")
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
 end)

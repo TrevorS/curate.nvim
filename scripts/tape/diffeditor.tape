@@ -1,13 +1,13 @@
 # VHS tape: the curate.nvim diff-editor (split mode) with live hunk selection.
 Output diffeditor.gif
-Set Theme "TokyoNight"
+Set Theme "Catppuccin Mocha"
 Set FontSize 16
 Set Width 1200
 Set Height 760
 Set Padding 14
 
 Hide
-Type "export REPO=$(bash $CURATE_ROOT/scripts/demo-repo.sh); cd $REPO; export HOME=$REPO/.home" Enter
+Type "export CURATE_COLORSCHEME=catppuccin; export REPO=$(bash $CURATE_ROOT/scripts/demo-repo.sh); cd $REPO; export HOME=$REPO/.home" Enter
 # Give @ a two-hunk diff in one file so split has something to route.
 Type "printf 'a\nb\nc\nd\ne\n' > split.txt; jj describe -m base >/dev/null 2>&1; jj new >/dev/null 2>&1" Enter
 Type "printf 'A\nb\nc\nD\ne\n' > split.txt" Enter

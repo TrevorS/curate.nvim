@@ -181,4 +181,28 @@ function M.restore()
   end
 end
 
+--- k — abandon the change under the cursor (or @), rebasing descendants onto its
+--- parent. Guarded like the other rewrites; abandoning @ is recoverable (jj
+--- gives a fresh empty @, `u` undoes it) but surprising, so confirm it.
+function M.abandon()
+  local t = util.cursor_target()
+  local change = t and t.change
+  local id = (change and change.id) or "@"
+  local is_current = (not change) or change.flags.current
+  local function run()
+    util.guard_immutable(t, "abandon", function()
+      util.mutate(jj, { "abandon", "-r", id }, "abandoned " .. id:sub(1, 8) .. "  (u to undo)")
+    end)
+  end
+  if is_current then
+    vim.ui.select({ "yes", "no" }, { prompt = "abandon the working-copy change @?" }, function(c)
+      if c == "yes" then
+        run()
+      end
+    end)
+  else
+    run()
+  end
+end
+
 return M

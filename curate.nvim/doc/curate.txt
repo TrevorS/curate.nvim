@@ -65,9 +65,10 @@ Home / log buffer ~
     A      absorb working copy             c   commit (describe + new)
     s      squash into parent / mark       S   squash interactively (hunks)
     x      split interactively (hunks)     =   restore from parent
+    k      abandon change                  K   untrack file (must be ignored)
     m      mark target                     r   rebase transient
     R      resolve conflicts (3-way)       b   bookmark menu
-    f      sync menu (fetch/push)          e   revset workbench
+    f      sync menu (fetch/pull/push)     e   revset workbench
     Z      power menu                      L   evolog
     o      op-log                          u   undo
     g      refresh    $  process buffer    ?   cheatsheet q  close

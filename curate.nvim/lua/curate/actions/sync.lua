@@ -20,6 +20,34 @@ function M.fetch_all()
   util.mutate(jj, { "git", "fetch", "--all-remotes" }, "fetched all remotes")
 end
 
+-- ── network: pull (fetch, then restack onto the updated trunk) ──
+
+--- The magit-style "pull": jj has no `pull`, so fetch and then rebase the local
+--- branch of @ onto the freshly-moved `trunk()`. A fetch failure aborts before
+--- any rewrite; when @ is already on trunk the rebase is a clean no-op.
+---@param fetch_args string[]  the git-fetch argv (default vs all-remotes)
+---@param label string
+local function pull_with(fetch_args, label)
+  jj.run(fetch_args, function(r)
+    if r.code ~= 0 then
+      vim.notify("curate: fetch failed: " .. vim.trim(r.stderr), vim.log.levels.WARN)
+      util.refresh_all()
+      return
+    end
+    util.mutate(jj, { "rebase", "-b", "@", "-d", "trunk()" }, label)
+  end)
+end
+
+--- u — pull: fetch the default remote, then rebase @'s branch onto trunk().
+function M.pull()
+  pull_with({ "git", "fetch" }, "pulled (fetched + rebased onto trunk)")
+end
+
+--- U — pull from all remotes, then rebase @'s branch onto trunk().
+function M.pull_all()
+  pull_with({ "git", "fetch", "--all-remotes" }, "pulled all remotes (rebased onto trunk)")
+end
+
 -- ── network: push ──
 
 --- Push tracked bookmarks with unpushed changes to their remotes.
@@ -48,6 +76,8 @@ function M.menu()
     items = {
       { key = "f", label = "fetch (default remote)", run = M.fetch },
       { key = "F", label = "fetch all remotes", run = M.fetch_all },
+      { key = "u", label = "pull (fetch + rebase onto trunk)", run = M.pull },
+      { key = "U", label = "pull all remotes (+ rebase)", run = M.pull_all },
       { key = "p", label = "push tracked bookmarks", run = M.push },
       { key = "c", label = "push this change as a new bookmark", run = M.push_change },
       { key = "P", label = "push all bookmarks", run = M.push_all },

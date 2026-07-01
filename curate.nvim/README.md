@@ -33,6 +33,22 @@ injected languages, and intra-line word emphasis together (Catppuccin Mocha):
 ![rich diff: syntax + word-level emphasis](../screenshots/richdiff.png)
 ![injections: markdown, lua, and vimscript in one diff](../screenshots/injections.png)
 
+### Command grammar (magit-style)
+
+`D` abandons (drops) the change under the cursor (children reparent); `K` untracks an
+ignored-but-committed file; the sync menu (`f`) grows a `pull` (fetch + rebase
+onto trunk):
+
+![abandon a change with D](../screenshots/abandon.gif)
+![untrack a file with K](../screenshots/untrack.gif)
+![sync menu with pull](../screenshots/sync-menu.png)
+
+The transient popups carry magit-style **sticky args** — toggle `-d`
+(`--dry-run`) in the push menu (`P`) and it rides along with whichever push
+action you pick:
+
+![push menu with a sticky --dry-run arg](../screenshots/pushmenu.gif)
+
 ## Requirements
 
 - Neovim **0.11+** (developed against 0.12)
@@ -111,10 +127,13 @@ Lower-case = safe · **UPPER-case = rewrites history**. `.` repeats the last rew
 | `S` | **squash interactively (hunks)** | `jj squash -i` |
 | `x` | **split interactively (hunks)** | `jj split -i` |
 | `=` | **restore hunk/file from parent** | `jj restore` |
+| `D` | **abandon (drop) change** (reparents children; confirm on @) | `jj abandon` |
+| `K` | untrack file under cursor (must be ignored) | `jj file untrack` |
 | `m` `r` | mark · **rebase transient** (onto / -r / -b / insert ±) | `jj rebase` |
 | `R` | **resolve conflicts (3-way merge-editor)** | `jj resolve` |
 | `b` | bookmark menu (set/tug/delete/forget/track/list) | `jj bookmark …` |
-| `f` | sync menu (fetch / fetch-all / push / push-change) | `jj git fetch/push` |
+| `f` | sync menu (fetch · **pull** = fetch+rebase · push) | `jj git fetch/push` |
+| `P` | push menu (sticky `-d` = `--dry-run`) | `jj git push` |
 | `e` | revset workbench (live query) | `jj log -r …` |
 | `Z` | power menu (duplicate/parallelize/fix/annotate/workspace) | `jj duplicate …` |
 | `o` | op-log | `jj op log` |

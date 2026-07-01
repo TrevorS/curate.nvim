@@ -20,23 +20,75 @@ function M.fetch_all()
   util.mutate(jj, { "git", "fetch", "--all-remotes" }, "fetched all remotes")
 end
 
+-- ── network: pull (fetch, then restack onto the updated trunk) ──
+
+--- The magit-style "pull": jj has no `pull`, so fetch and then rebase the local
+--- branch of @ onto the freshly-moved `trunk()`. A fetch failure aborts before
+--- any rewrite; when @ is already on trunk the rebase is a clean no-op.
+---@param fetch_args string[]  the git-fetch argv (default vs all-remotes)
+---@param label string
+local function pull_with(fetch_args, label)
+  jj.run(fetch_args, function(r)
+    if r.code ~= 0 then
+      vim.notify("curate: fetch failed: " .. vim.trim(r.stderr), vim.log.levels.WARN)
+      util.refresh_all()
+      return
+    end
+    util.mutate(jj, { "rebase", "-b", "@", "-d", "trunk()" }, label)
+  end)
+end
+
+--- u — pull: fetch the default remote, then rebase @'s branch onto trunk().
+function M.pull()
+  pull_with({ "git", "fetch" }, "pulled (fetched + rebased onto trunk)")
+end
+
+--- U — pull from all remotes, then rebase @'s branch onto trunk().
+function M.pull_all()
+  pull_with({ "git", "fetch", "--all-remotes" }, "pulled all remotes (rebased onto trunk)")
+end
+
 -- ── network: push ──
 
+--- Run `jj git push` with the given base args plus any transient flags.
+---@param base string[]  e.g. {} or { "--all" }
+---@param flags string[]|nil  sticky-arg flags from the push transient
+---@param label string
+local function git_push(base, flags, label)
+  local args = vim.list_extend({ "git", "push" }, base)
+  util.mutate(jj, vim.list_extend(args, flags or {}), label)
+end
+
 --- Push tracked bookmarks with unpushed changes to their remotes.
-function M.push()
-  util.mutate(jj, { "git", "push" }, "pushed")
+function M.push(flags)
+  git_push({}, flags, "pushed")
 end
 
 --- Push the change under the cursor (or @) as a new auto-named bookmark
 --- (push-<change-id>). The 80% "publish what I'm working on" gesture.
-function M.push_change()
+function M.push_change(flags)
   local id = util.cursor_change_id() or "@"
-  util.mutate(jj, { "git", "push", "--change", id }, "pushed " .. id:sub(1, 8))
+  git_push({ "--change", id }, flags, "pushed " .. id:sub(1, 8))
 end
 
 --- Push every bookmark (including new ones) to the default remote.
-function M.push_all()
-  util.mutate(jj, { "git", "push", "--all" }, "pushed all bookmarks")
+function M.push_all(flags)
+  git_push({ "--all" }, flags, "pushed all bookmarks")
+end
+
+--- P — the push transient: a sticky `--dry-run` arg over the push actions, the
+--- poster child for the transient engine's toggleable flags. (Pushing a named
+--- bookmark already allows new bookmarks in jj, so there is no `--allow-new`.)
+function M.push_menu()
+  transient.open({
+    title = "push (git)",
+    items = {
+      { key = "d", arg = true, flag = "--dry-run", label = "dry run (show, don't push)" },
+      { key = "p", label = "push tracked bookmarks", run = M.push },
+      { key = "c", label = "push this change as a new bookmark", run = M.push_change },
+      { key = "P", label = "push all bookmarks", run = M.push_all },
+    },
+  })
 end
 
 -- ── the sync transient (network) ──
@@ -48,6 +100,8 @@ function M.menu()
     items = {
       { key = "f", label = "fetch (default remote)", run = M.fetch },
       { key = "F", label = "fetch all remotes", run = M.fetch_all },
+      { key = "u", label = "pull (fetch + rebase onto trunk)", run = M.pull },
+      { key = "U", label = "pull all remotes (+ rebase)", run = M.pull_all },
       { key = "p", label = "push tracked bookmarks", run = M.push },
       { key = "c", label = "push this change as a new bookmark", run = M.push_change },
       { key = "P", label = "push all bookmarks", run = M.push_all },

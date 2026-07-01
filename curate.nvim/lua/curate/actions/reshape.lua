@@ -43,9 +43,11 @@ function M.rebase()
   end
   local source = M._mark or "@"
 
-  local function run(args, label)
+  -- `args` is the base rebase argv; `flags` are the sticky args toggled in the
+  -- transient (--skip-emptied / --keep-divergent), appended to every mode.
+  local function run(args, flags, label)
     util.guard_immutable(t, "rebase", function()
-      util.mutate(jj, args, label)
+      util.mutate(jj, vim.list_extend(args, flags or {}), label)
       M._mark = nil
       if view then
         decor.set_dest(view.buf, nil)
@@ -57,33 +59,36 @@ function M.rebase()
   require("curate.ui.transient").open({
     title = ("rebase  %s → %s"):format(s, d),
     items = {
+      { key = "e", arg = true, flag = "--skip-emptied", label = "skip emptied" },
+      { key = "k", arg = true, flag = "--keep-divergent", label = "keep divergent" },
       {
         key = "d",
         label = ("onto  (-s %s -d %s, with descendants)"):format(s, d),
-        run = function()
-          run({ "rebase", "-s", source, "-d", dest }, "rebased " .. s .. " onto " .. d)
+        run = function(flags)
+          run({ "rebase", "-s", source, "-d", dest }, flags, "rebased " .. s .. " onto " .. d)
         end,
       },
       {
         key = "r",
         label = ("only this revision  (-r %s -d %s)"):format(s, d),
-        run = function()
-          run({ "rebase", "-r", source, "-d", dest }, "rebased " .. s .. " (rev only)")
+        run = function(flags)
+          run({ "rebase", "-r", source, "-d", dest }, flags, "rebased " .. s .. " (rev only)")
         end,
       },
       {
         key = "b",
         label = ("whole branch  (-b %s -d %s)"):format(s, d),
-        run = function()
-          run({ "rebase", "-b", source, "-d", dest }, "rebased branch of " .. s)
+        run = function(flags)
+          run({ "rebase", "-b", source, "-d", dest }, flags, "rebased branch of " .. s)
         end,
       },
       {
         key = "A",
         label = ("insert after  (--insert-after %s)"):format(d),
-        run = function()
+        run = function(flags)
           run(
             { "rebase", "-s", source, "--insert-after", dest },
+            flags,
             "inserted " .. s .. " after " .. d
           )
         end,
@@ -91,9 +96,10 @@ function M.rebase()
       {
         key = "B",
         label = ("insert before  (--insert-before %s)"):format(d),
-        run = function()
+        run = function(flags)
           run(
             { "rebase", "-s", source, "--insert-before", dest },
+            flags,
             "inserted " .. s .. " before " .. d
           )
         end,

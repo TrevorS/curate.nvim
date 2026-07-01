@@ -66,9 +66,9 @@ Home / log buffer ~
     s      squash into parent / mark       S   squash interactively (hunks)
     x      split interactively (hunks)     =   restore from parent
     D      abandon (drop) change           K   untrack file (must be ignored)
-    m      mark target                     r   rebase transient
+    m      mark target                     r   rebase transient (sticky -e/-k)
     R      resolve conflicts (3-way)       b   bookmark menu
-    f      sync menu (fetch/pull/push)     P   push menu (sticky --dry-run)
+    f      fetch/pull menu (sticky -a)     P   push menu (sticky -d/=remote)
     e      revset workbench                Z   power menu
     L      evolog
     o      op-log                          u   undo

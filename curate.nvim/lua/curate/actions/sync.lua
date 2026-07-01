@@ -10,42 +10,28 @@ local M = {}
 
 -- ── network: fetch ──
 
---- Fetch from the default remote.
-function M.fetch()
-  util.mutate(jj, { "git", "fetch" }, "fetched")
-end
-
---- Fetch from every configured remote.
-function M.fetch_all()
-  util.mutate(jj, { "git", "fetch", "--all-remotes" }, "fetched all remotes")
+--- Fetch, plus any sticky-arg flags from the fetch/pull menu (e.g. --all-remotes).
+---@param flags string[]|nil
+function M.fetch(flags)
+  util.mutate(jj, vim.list_extend({ "git", "fetch" }, flags or {}), "fetched")
 end
 
 -- ── network: pull (fetch, then restack onto the updated trunk) ──
 
---- The magit-style "pull": jj has no `pull`, so fetch and then rebase the local
---- branch of @ onto the freshly-moved `trunk()`. A fetch failure aborts before
---- any rewrite; when @ is already on trunk the rebase is a clean no-op.
----@param fetch_args string[]  the git-fetch argv (default vs all-remotes)
----@param label string
-local function pull_with(fetch_args, label)
-  jj.run(fetch_args, function(r)
+--- The magit-style "pull": jj has no `pull`, so fetch (honouring the menu's
+--- flags) and then rebase the local branch of @ onto the freshly-moved
+--- `trunk()`. A fetch failure aborts before any rewrite; when @ is already on
+--- trunk the rebase is a clean no-op.
+---@param flags string[]|nil  fetch flags from the transient (e.g. --all-remotes)
+function M.pull(flags)
+  jj.run(vim.list_extend({ "git", "fetch" }, flags or {}), function(r)
     if r.code ~= 0 then
       vim.notify("curate: fetch failed: " .. vim.trim(r.stderr), vim.log.levels.WARN)
       util.refresh_all()
       return
     end
-    util.mutate(jj, { "rebase", "-b", "@", "-d", "trunk()" }, label)
+    util.mutate(jj, { "rebase", "-b", "@", "-d", "trunk()" }, "pulled (rebased onto trunk)")
   end)
-end
-
---- u — pull: fetch the default remote, then rebase @'s branch onto trunk().
-function M.pull()
-  pull_with({ "git", "fetch" }, "pulled (fetched + rebased onto trunk)")
-end
-
---- U — pull from all remotes, then rebase @'s branch onto trunk().
-function M.pull_all()
-  pull_with({ "git", "fetch", "--all-remotes" }, "pulled all remotes (rebased onto trunk)")
 end
 
 -- ── network: push ──
@@ -84,6 +70,7 @@ function M.push_menu()
     title = "push (git)",
     items = {
       { key = "d", arg = true, flag = "--dry-run", label = "dry run (show, don't push)" },
+      { key = "r", arg = true, value = true, flag = "--remote", label = "remote" },
       { key = "p", label = "push tracked bookmarks", run = M.push },
       { key = "c", label = "push this change as a new bookmark", run = M.push_change },
       { key = "P", label = "push all bookmarks", run = M.push_all },
@@ -91,20 +78,17 @@ function M.push_menu()
   })
 end
 
--- ── the sync transient (network) ──
+-- ── the fetch/pull transient (network) ──
 
---- f — the sync menu: fetch / fetch-all / push / push-change / push-all.
+--- f — the fetch/pull menu, with a sticky `--all-remotes` arg shared by both
+--- actions (magit's F, split from push which lives on `P`).
 function M.menu()
   transient.open({
-    title = "sync (git)",
+    title = "fetch / pull (git)",
     items = {
-      { key = "f", label = "fetch (default remote)", run = M.fetch },
-      { key = "F", label = "fetch all remotes", run = M.fetch_all },
-      { key = "u", label = "pull (fetch + rebase onto trunk)", run = M.pull },
-      { key = "U", label = "pull all remotes (+ rebase)", run = M.pull_all },
-      { key = "p", label = "push tracked bookmarks", run = M.push },
-      { key = "c", label = "push this change as a new bookmark", run = M.push_change },
-      { key = "P", label = "push all bookmarks", run = M.push_all },
+      { key = "a", arg = true, flag = "--all-remotes", label = "all remotes" },
+      { key = "f", label = "fetch", run = M.fetch },
+      { key = "u", label = "pull (fetch, then rebase @ onto trunk)", run = M.pull },
     },
   })
 end

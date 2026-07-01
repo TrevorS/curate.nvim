@@ -43,11 +43,18 @@ onto trunk):
 ![untrack a file with K](../screenshots/untrack.gif)
 ![sync menu with pull](../screenshots/sync-menu.png)
 
-The transient popups carry magit-style **sticky args** — toggle `-d`
-(`--dry-run`) in the push menu (`P`) and it rides along with whichever push
-action you pick:
+The menu transients carry magit-style **sticky args** — a row of toggleable `-`
+flags above the actions that ride along with whichever action you pick. Boolean
+args show `[ ]`/`[✓]`; **value args** (like `=remote`) prompt for a value and
+show `[=origin]`. They're plumbed through every menu with useful flags:
 
-![push menu with a sticky --dry-run arg](../screenshots/pushmenu.gif)
+- **fetch/pull** (`f`) — `-a` `--all-remotes`
+- **push** (`P`) — `-d` `--dry-run` · `=r` `--remote <name>`
+- **rebase** (`r`) — `-e` `--skip-emptied` · `-k` `--keep-divergent`
+
+![push menu with sticky --dry-run and =remote args](../screenshots/pushmenu.gif)
+![fetch/pull menu with a sticky --all-remotes arg](../screenshots/fetchpull.gif)
+![rebase menu with sticky --skip-emptied/--keep-divergent args](../screenshots/rebasemenu.gif)
 
 ## Requirements
 
@@ -129,11 +136,11 @@ Lower-case = safe · **UPPER-case = rewrites history**. `.` repeats the last rew
 | `=` | **restore hunk/file from parent** | `jj restore` |
 | `D` | **abandon (drop) change** (reparents children; confirm on @) | `jj abandon` |
 | `K` | untrack file under cursor (must be ignored) | `jj file untrack` |
-| `m` `r` | mark · **rebase transient** (onto / -r / -b / insert ±) | `jj rebase` |
+| `m` `r` | mark · **rebase transient** (onto / -r / -b / insert ±; sticky `-e`/`-k`) | `jj rebase` |
 | `R` | **resolve conflicts (3-way merge-editor)** | `jj resolve` |
 | `b` | bookmark menu (set/tug/delete/forget/track/list) | `jj bookmark …` |
-| `f` | sync menu (fetch · **pull** = fetch+rebase · push) | `jj git fetch/push` |
-| `P` | push menu (sticky `-d` = `--dry-run`) | `jj git push` |
+| `f` | fetch/pull menu (sticky `-a` = `--all-remotes`; pull = fetch+rebase) | `jj git fetch` |
+| `P` | push menu (sticky `-d` `--dry-run` · `=r` `--remote`) | `jj git push` |
 | `e` | revset workbench (live query) | `jj log -r …` |
 | `Z` | power menu (duplicate/parallelize/fix/annotate/workspace) | `jj duplicate …` |
 | `o` | op-log | `jj op log` |

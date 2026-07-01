@@ -90,6 +90,19 @@ describe("P5 sync (integration, bare remote)", function()
     assert.is_falsy((br.stdout or ""):find("push%-"), "dry run must not create a ref")
   end)
 
+  it("the menus' sticky-arg flags are valid jj flags", function()
+    -- push menu's --remote value arg (+ --dry-run) and the fetch/pull menu's
+    -- --all-remotes must all be accepted by jj (exit 0), or a toggle would error.
+    local runner = require("curate.jj.runner")
+    local push = runner.sync(
+      { "git", "push", "--remote", "origin", "--change", "@", "--dry-run" },
+      { cwd = A, env = env }
+    )
+    assert.equals(0, push.code, "push --remote/--dry-run: " .. (push.stderr or ""))
+    local fetch = runner.sync({ "git", "fetch", "--all-remotes" }, { cwd = A, env = env })
+    assert.equals(0, fetch.code, "fetch --all-remotes: " .. (fetch.stderr or ""))
+  end)
+
   it("tug moves a bookmark forward to @", function()
     local util = require("curate.actions.util")
     local jj = require("curate.jj")
